@@ -32,44 +32,38 @@ st.markdown("""
         font-size: 1.2rem;
         font-style: italic;
     }
-    .step-container {
+    .audio-section {
         background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
         padding: 2rem;
         border-radius: 15px;
         margin-bottom: 2rem;
         border: 2px solid #dee2e6;
         box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        height: 100%;
     }
-    .step-header {
+    .audio-header {
         display: flex;
         align-items: center;
         margin-bottom: 1.5rem;
         padding-bottom: 1rem;
         border-bottom: 2px solid #dee2e6;
     }
-    .step-number {
-        background: linear-gradient(135deg, #1f77b4, #ff7f0e);
-        color: white;
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: bold;
-        font-size: 1.2rem;
+    .audio-icon {
+        font-size: 2rem;
         margin-right: 1rem;
+        color: #1f77b4;
     }
-    .step-title {
+    .audio-title {
         font-size: 1.5rem;
         font-weight: bold;
         color: #1f77b4;
         margin: 0;
     }
-    .step-description {
+    .audio-description {
         color: #666;
         margin-top: 0.5rem;
         font-size: 1rem;
+        line-height: 1.4;
     }
     .upload-area {
         border: 3px dashed #1f77b4;
@@ -79,6 +73,10 @@ st.markdown("""
         background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
         margin: 1rem 0;
         transition: all 0.3s ease;
+        min-height: 150px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
     }
     .upload-area:hover {
         border-color: #ff7f0e;
@@ -122,6 +120,7 @@ st.markdown("""
         text-transform: uppercase;
         letter-spacing: 1px;
         width: 100%;
+        margin: 2rem 0;
     }
     .convert-button:hover {
         transform: translateY(-3px);
@@ -140,55 +139,77 @@ st.markdown("""
         border: 3px solid #28a745;
         box-shadow: 0 4px 6px rgba(40, 167, 69, 0.2);
     }
-    .success-box {
-        background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+    .converted-section {
+        background: linear-gradient(135deg, #e8f5e8 0%, #d4edda 100%);
         border: 3px solid #28a745;
         border-radius: 15px;
         padding: 2rem;
         margin: 2rem 0;
         box-shadow: 0 4px 15px rgba(40, 167, 69, 0.2);
-        text-align: center;
     }
-    .success-title {
-        font-size: 1.5rem;
+    .converted-title {
+        font-size: 1.8rem;
         font-weight: bold;
         color: #155724;
         margin-bottom: 1rem;
+        text-align: center;
     }
-    .progress-bar {
-        background: #e9ecef;
-        border-radius: 10px;
-        height: 8px;
-        margin: 1rem 0;
-        overflow: hidden;
-    }
-    .progress-fill {
-        background: linear-gradient(90deg, #1f77b4, #ff7f0e);
-        height: 100%;
-        border-radius: 10px;
-        transition: width 0.3s ease;
-    }
-    .step-complete {
-        background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
-        border: 2px solid #28a745;
-    }
-    .step-complete .step-number {
-        background: #28a745;
-    }
-    .step-complete .step-title {
+    .converted-description {
         color: #155724;
+        text-align: center;
+        margin-bottom: 1.5rem;
+        font-size: 1.1rem;
     }
-    .settings-section {
+    .info-box {
+        background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
+        border: 2px solid #17a2b8;
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin: 1rem 0;
+        box-shadow: 0 4px 15px rgba(23, 162, 184, 0.2);
+    }
+    .info-title {
+        font-size: 1.2rem;
+        font-weight: bold;
+        color: #0c5460;
+        margin-bottom: 1rem;
+    }
+    .info-content {
+        color: #0c5460;
+        line-height: 1.6;
+        font-size: 0.95rem;
+    }
+    .gender-preservation {
         background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
         border: 2px solid #ffc107;
         border-radius: 15px;
         padding: 1.5rem;
         margin: 1rem 0;
+        box-shadow: 0 4px 15px rgba(255, 193, 7, 0.2);
+    }
+    .gender-title {
+        font-size: 1.2rem;
+        font-weight: bold;
+        color: #856404;
+        margin-bottom: 1rem;
+    }
+    .gender-content {
+        color: #856404;
+        line-height: 1.6;
+        font-size: 0.95rem;
+    }
+    .settings-section {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border: 2px solid #dee2e6;
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin: 1rem 0;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     }
     .settings-title {
         font-size: 1.2rem;
         font-weight: bold;
-        color: #856404;
+        color: #495057;
         margin-bottom: 1rem;
     }
 </style>
@@ -282,7 +303,7 @@ def check_openvoice_installation():
 def main():
     # Header
     st.markdown('<h1 class="main-header">🎵 OpenVoice AI Audio Converter</h1>', unsafe_allow_html=True)
-    st.markdown('<p class="subtitle">Transform your voice using AI-powered voice conversion</p>', unsafe_allow_html=True)
+    st.markdown('<p class="subtitle">Transform your voice accent while preserving gender and content</p>', unsafe_allow_html=True)
     
     # Check OpenVoice installation
     openvoice_available = check_openvoice_installation()
@@ -293,35 +314,55 @@ def main():
         st.stop()
     
     # Initialize session state
-    if 'current_step' not in st.session_state:
-        st.session_state.current_step = 1
-    if 'input_file' not in st.session_state:
-        st.session_state.input_file = None
-    if 'ref_file' not in st.session_state:
-        st.session_state.ref_file = None
     if 'device' not in st.session_state:
         st.session_state.device = 'cpu'
     if 'converted_audio' not in st.session_state:
         st.session_state.converted_audio = None
     
-    # Progress bar
-    progress = st.session_state.current_step / 4
-    st.markdown(f"""
-    <div class="progress-bar">
-        <div class="progress-fill" style="width: {progress * 100}%"></div>
+    # Gender preservation info
+    st.markdown("""
+    <div class="gender-preservation">
+        <div class="gender-title">🎯 Gender Preservation Feature</div>
+        <div class="gender-content">
+            <p><strong>OpenVoice AI preserves your original gender while changing the accent!</strong></p>
+            <ul>
+                <li>👨 <strong>Male voice</strong> → Male voice with new accent</li>
+                <li>👩 <strong>Female voice</strong> → Female voice with new accent</li>
+                <li>🗣️ <strong>Your words</strong> → Same words, different accent</li>
+                <li>�� <strong>Reference accent</strong> → Applied to your voice</li>
+            </ul>
+            <p><strong>Perfect for:</strong> Accent training, language learning, voice acting, and content creation!</p>
+        </div>
     </div>
     """, unsafe_allow_html=True)
     
-    # Step 1: Upload Input Audio
-    if st.session_state.current_step == 1:
+    # Two-column layout for audio uploads
+    col1, col2 = st.columns(2)
+    
+    with col1:
         st.markdown("""
-        <div class="step-container">
-            <div class="step-header">
-                <div class="step-number">1</div>
+        <div class="audio-section">
+            <div class="audio-header">
+                <div class="audio-icon">🎤</div>
                 <div>
-                    <h3 class="step-title">📁 Upload Input Audio</h3>
-                    <p class="step-description">Choose the audio file you want to convert</p>
+                    <h3 class="audio-title">Input Audio</h3>
+                    <p class="audio-description">Your original voice that will be converted</p>
                 </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.markdown("""
+        <div class="info-box">
+            <div class="info-title">📝 What is Input Audio?</div>
+            <div class="info-content">
+                <p>This is <strong>your original voice recording</strong> that you want to transform. It can be:</p>
+                <ul>
+                    <li>Your speech in your current accent</li>
+                    <li>Any audio you want to change the accent of</li>
+                    <li>The content that will keep its words but get a new accent</li>
+                </ul>
+                <p><strong>Example:</strong> If you speak with an American accent and want to sound British, upload your American-accented speech here.</p>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -337,51 +378,46 @@ def main():
         input_file = st.file_uploader(
             "Choose your input audio file", 
             type=['wav', 'mp3', 'flac', 'm4a'],
-            key="input_file_step1",
+            key="input_file",
             help="Upload the audio file you want to convert",
             label_visibility="collapsed"
         )
         
         if input_file is not None:
-            st.session_state.input_file = input_file
-            st.success("✅ Input audio file uploaded successfully!")
+            st.success("✅ Input audio uploaded successfully!")
             
             # Preview the audio
             try:
                 input_data, input_sr = load_audio_file(input_file)
-                st.markdown(create_audio_player(input_data, input_sr, "Input Audio Preview"), unsafe_allow_html=True)
+                st.markdown(create_audio_player(input_data, input_sr, "Your Original Voice"), unsafe_allow_html=True)
             except Exception as e:
                 st.error(f"Error loading input file: {str(e)}")
                 input_file = None
-        
-        col1, col2 = st.columns([1, 1])
-        with col2:
-            if st.button("Next Step →", disabled=input_file is None, key="next_step_1"):
-                st.session_state.current_step = 2
-                st.rerun()
     
-    # Step 2: Upload Reference Voice
-    elif st.session_state.current_step == 2:
+    with col2:
         st.markdown("""
-        <div class="step-container step-complete">
-            <div class="step-header">
-                <div class="step-number">✓</div>
+        <div class="audio-section">
+            <div class="audio-header">
+                <div class="audio-icon">🎭</div>
                 <div>
-                    <h3 class="step-title">📁 Upload Input Audio</h3>
-                    <p class="step-description">Input audio uploaded successfully</p>
+                    <h3 class="audio-title">Reference Voice</h3>
+                    <p class="audio-description">Target accent and voice style to adopt</p>
                 </div>
             </div>
         </div>
         """, unsafe_allow_html=True)
         
         st.markdown("""
-        <div class="step-container">
-            <div class="step-header">
-                <div class="step-number">2</div>
-                <div>
-                    <h3 class="step-title">🎯 Upload Reference Voice</h3>
-                    <p class="step-description">Choose the reference voice that will be used for conversion</p>
-                </div>
+        <div class="info-box">
+            <div class="info-title">🎯 What is Reference Voice?</div>
+            <div class="info-content">
+                <p>This is the <strong>target voice style</strong> you want to adopt. It should be:</p>
+                <ul>
+                    <li>A clear recording of the accent you want</li>
+                    <li>High-quality audio with good pronunciation</li>
+                    <li>Similar gender to your input voice for best results</li>
+                </ul>
+                <p><strong>Example:</strong> If you want to sound British, upload a clear recording of a British speaker with the same gender as your input voice.</p>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -397,77 +433,31 @@ def main():
         ref_file = st.file_uploader(
             "Choose reference voice file", 
             type=['wav', 'mp3', 'flac', 'm4a'],
-            key="ref_file_step2",
+            key="ref_file",
             help="Upload the reference voice that will be used for conversion",
             label_visibility="collapsed"
         )
         
         if ref_file is not None:
-            st.session_state.ref_file = ref_file
-            st.success("✅ Reference voice file uploaded successfully!")
+            st.success("✅ Reference voice uploaded successfully!")
             
             # Preview the audio
             try:
                 ref_data, ref_sr = load_audio_file(ref_file)
-                st.markdown(create_audio_player(ref_data, ref_sr, "Reference Voice Preview"), unsafe_allow_html=True)
+                st.markdown(create_audio_player(ref_data, ref_sr, "Target Accent Voice"), unsafe_allow_html=True)
             except Exception as e:
                 st.error(f"Error loading reference file: {str(e)}")
                 ref_file = None
-        
-        col1, col2, col3 = st.columns([1, 1, 1])
-        with col1:
-            if st.button("← Back", key="back_step_2"):
-                st.session_state.current_step = 1
-                st.rerun()
-        with col3:
-            if st.button("Next Step →", disabled=ref_file is None, key="next_step_2"):
-                st.session_state.current_step = 3
-                st.rerun()
     
-    # Step 3: Settings and Configuration
-    elif st.session_state.current_step == 3:
-        st.markdown("""
-        <div class="step-container step-complete">
-            <div class="step-header">
-                <div class="step-number">✓</div>
-                <div>
-                    <h3 class="step-title">📁 Upload Input Audio</h3>
-                    <p class="step-description">Input audio uploaded successfully</p>
-                </div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        st.markdown("""
-        <div class="step-container step-complete">
-            <div class="step-header">
-                <div class="step-number">✓</div>
-                <div>
-                    <h3 class="step-title">🎯 Upload Reference Voice</h3>
-                    <p class="step-description">Reference voice uploaded successfully</p>
-                </div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        st.markdown("""
-        <div class="step-container">
-            <div class="step-header">
-                <div class="step-number">3</div>
-                <div>
-                    <h3 class="step-title">⚙️ Configure Settings</h3>
-                    <p class="step-description">Choose your processing preferences</p>
-                </div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        st.markdown("""
-        <div class="settings-section">
-            <div class="settings-title">🔧 Processing Settings</div>
-        </div>
-        """, unsafe_allow_html=True)
-        
+    # Settings section
+    st.markdown("""
+    <div class="settings-section">
+        <div class="settings-title">⚙️ Processing Settings</div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    col1, col2 = st.columns(2)
+    with col1:
         device = st.selectbox(
             "Select device for processing:",
             ["cpu", "cuda"],
@@ -475,95 +465,24 @@ def main():
             index=0 if st.session_state.device == 'cpu' else 1
         )
         st.session_state.device = device
-        
-        st.info("💡 **Tip**: Use CPU for Intel Mac or CUDA for NVIDIA GPU. CPU processing is more stable but slower.")
-        
-        col1, col2, col3 = st.columns([1, 1, 1])
-        with col1:
-            if st.button("← Back", key="back_step_3"):
-                st.session_state.current_step = 2
-                st.rerun()
-        with col3:
-            if st.button("Start Conversion →", key="next_step_3"):
-                st.session_state.current_step = 4
-                st.rerun()
     
-    # Step 4: Conversion and Results
-    elif st.session_state.current_step == 4:
-        st.markdown("""
-        <div class="step-container step-complete">
-            <div class="step-header">
-                <div class="step-number">✓</div>
-                <div>
-                    <h3 class="step-title">📁 Upload Input Audio</h3>
-                    <p class="step-description">Input audio uploaded successfully</p>
-                </div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        st.markdown("""
-        <div class="step-container step-complete">
-            <div class="step-header">
-                <div class="step-number">✓</div>
-                <div>
-                    <h3 class="step-title">🎯 Upload Reference Voice</h3>
-                    <p class="step-description">Reference voice uploaded successfully</p>
-                </div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        st.markdown("""
-        <div class="step-container step-complete">
-            <div class="step-header">
-                <div class="step-number">✓</div>
-                <div>
-                    <h3 class="step-title">⚙️ Configure Settings</h3>
-                    <p class="step-description">Settings configured successfully</p>
-                </div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        st.markdown("""
-        <div class="step-container">
-            <div class="step-header">
-                <div class="step-number">4</div>
-                <div>
-                    <h3 class="step-title">🔄 Convert Voice</h3>
-                    <p class="step-description">Process your audio with OpenVoice AI</p>
-                </div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        # Display uploaded files
-        st.markdown("#### 🎧 Your Audio Files")
-        
-        # Process input file
-        try:
-            input_data, input_sr = load_audio_file(st.session_state.input_file)
-            st.markdown(create_audio_player(input_data, input_sr, "Input Audio"), unsafe_allow_html=True)
-        except Exception as e:
-            st.error(f"Error loading input file: {str(e)}")
-            return
-        
-        # Process reference file
-        try:
-            ref_data, ref_sr = load_audio_file(st.session_state.ref_file)
-            st.markdown(create_audio_player(ref_data, ref_sr, "Reference Voice"), unsafe_allow_html=True)
-        except Exception as e:
-            st.error(f"Error loading reference file: {str(e)}")
-            return
-        
-        # Convert button
-        if st.button("🔄 Convert Voice with OpenVoice AI", key="convert_btn", help="Click to start real voice conversion"):
+    with col2:
+        st.info("💡 **Tip**: Use CPU for Intel Mac or CUDA for NVIDIA GPU. CPU processing is more stable but slower.")
+    
+    # Convert button
+    if st.button("🔄 Convert Voice with OpenVoice AI", key="convert_btn", help="Click to start real voice conversion", disabled=(input_file is None or ref_file is None)):
+        if input_file is None or ref_file is None:
+            st.warning("⚠️ Please upload both input audio and reference voice files to proceed.")
+        else:
             with st.spinner("Converting voice using OpenVoice AI... This may take a few minutes."):
                 try:
                     # Import tune_one function from the __main__ module
                     import openvoice_cli.__main__ as openvoice_main
                     tune_one = openvoice_main.tune_one
+                    
+                    # Load audio files
+                    input_data, input_sr = load_audio_file(input_file)
+                    ref_data, ref_sr = load_audio_file(ref_file)
                     
                     # Create temporary files
                     with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_input:
@@ -590,23 +509,13 @@ def main():
                         converted_data, converted_sr = sf.read(output_path)
                         st.session_state.converted_audio = (converted_data, converted_sr)
                         
-                        # Display converted audio
-                        st.markdown("#### ✨ Converted Audio")
-                        st.markdown(create_audio_player(converted_data, converted_sr, "Converted Voice"), unsafe_allow_html=True)
-                        
-                        # Download section
-                        st.markdown('<div class="download-section">', unsafe_allow_html=True)
-                        st.markdown("#### 💾 Download Converted Audio")
-                        download_link = get_download_link(converted_data, converted_sr, "converted_voice.wav")
-                        st.markdown(download_link, unsafe_allow_html=True)
-                        st.markdown('</div>', unsafe_allow_html=True)
-                        
                         # Clean up temporary files
                         os.unlink(temp_input_path)
                         os.unlink(temp_ref_path)
                         os.unlink(output_path)
                         
                         st.success("✅ Voice conversion completed successfully!")
+                        st.balloons()
                     else:
                         st.error("❌ Conversion failed. Please check your files and try again.")
                         
@@ -618,14 +527,34 @@ def main():
                         os.unlink(temp_ref_path)
                     except:
                         pass
+    
+    # Converted audio section (full width)
+    if st.session_state.converted_audio is not None:
+        converted_data, converted_sr = st.session_state.converted_audio
+        
+        st.markdown("""
+        <div class="converted-section">
+            <div class="converted-title">✨ Converted Audio Result</div>
+            <div class="converted-description">
+                Your original words + Reference accent + Preserved gender
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Display converted audio
+        st.markdown(create_audio_player(converted_data, converted_sr, "Converted Voice (Your Words + Reference Accent)"), unsafe_allow_html=True)
+        
+        # Download section
+        st.markdown('<div class="download-section">', unsafe_allow_html=True)
+        st.markdown("#### 💾 Download Converted Audio")
+        download_link = get_download_link(converted_data, converted_sr, "converted_voice.wav")
+        st.markdown(download_link, unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
         
         # Reset button
         col1, col2, col3 = st.columns([1, 1, 1])
         with col2:
             if st.button("🔄 Start New Conversion", key="reset_conversion"):
-                st.session_state.current_step = 1
-                st.session_state.input_file = None
-                st.session_state.ref_file = None
                 st.session_state.converted_audio = None
                 st.rerun()
     
@@ -633,19 +562,27 @@ def main():
     st.markdown("---")
     st.markdown("### About OpenVoice AI")
     st.markdown("""
-    OpenVoice is an advanced AI voice conversion tool that can transform your voice to match a reference voice while preserving the original speech content and emotion.
+    OpenVoice is an advanced AI voice conversion tool that can transform your voice to match a reference voice while preserving the original speech content, emotion, and gender.
     
-    **Features:**
-    - High-quality voice conversion
-    - Preserves speech content and emotion
-    - Supports multiple audio formats
-    - CPU and GPU processing options
+    **What it does:**
+    - 🎯 **Extracts accent and tone** from reference voice
+    - 🎤 **Applies that accent/tone** to your input audio
+    - 👤 **Preserves your gender** (male stays male, female stays female)
+    - 📝 **Keeps original words** and content exactly the same
+    - 🗣️ **Result:** Your speech with the reference voice's accent and characteristics
+    
+    **Perfect for:**
+    - Accent training and practice
+    - Voice acting and character work
+    - Language learning with native accents
+    - Content creation with different voice styles
     
     **Current Status:**
     - Interface: ✅ Ready
     - Audio Upload/Preview: ✅ Working
     - OpenVoice CLI: ✅ Available
     - Real Voice Conversion: ✅ Active
+    - Gender Preservation: ✅ Enabled
     """)
 
 if __name__ == "__main__":
