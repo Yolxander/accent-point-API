@@ -329,14 +329,14 @@ def main():
                 <li>👨 <strong>Male voice</strong> → Male voice with new accent</li>
                 <li>👩 <strong>Female voice</strong> → Female voice with new accent</li>
                 <li>🗣️ <strong>Your words</strong> → Same words, different accent</li>
-                <li>�� <strong>Reference accent</strong> → Applied to your voice</li>
+                <li>🎭 <strong>Reference accent</strong> → Applied to your voice</li>
             </ul>
             <p><strong>Perfect for:</strong> Accent training, language learning, voice acting, and content creation!</p>
         </div>
     </div>
     """, unsafe_allow_html=True)
     
-    # Two-column layout for audio uploads
+    # Two-column layout for audio uploads (SWITCHED EXPLANATIONS)
     col1, col2 = st.columns(2)
     
     with col1:
@@ -352,17 +352,18 @@ def main():
         </div>
         """, unsafe_allow_html=True)
         
+        # SWITCHED: Input Audio section now shows Reference Voice explanation
         st.markdown("""
         <div class="info-box">
-            <div class="info-title">📝 What is Input Audio?</div>
+            <div class="info-title">🎯 What is Reference Voice?</div>
             <div class="info-content">
-                <p>This is <strong>your original voice recording</strong> that you want to transform. It can be:</p>
+                <p>This is the <strong>target voice style</strong> you want to adopt. It should be:</p>
                 <ul>
-                    <li>Your speech in your current accent</li>
-                    <li>Any audio you want to change the accent of</li>
-                    <li>The content that will keep its words but get a new accent</li>
+                    <li>A clear recording of the accent you want</li>
+                    <li>High-quality audio with good pronunciation</li>
+                    <li>Similar gender to your input voice for best results</li>
                 </ul>
-                <p><strong>Example:</strong> If you speak with an American accent and want to sound British, upload your American-accented speech here.</p>
+                <p><strong>Example:</strong> If you want to sound British, upload a clear recording of a British speaker with the same gender as your input voice.</p>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -407,17 +408,18 @@ def main():
         </div>
         """, unsafe_allow_html=True)
         
+        # SWITCHED: Reference Voice section now shows Input Audio explanation
         st.markdown("""
         <div class="info-box">
-            <div class="info-title">🎯 What is Reference Voice?</div>
+            <div class="info-title">📝 What is Input Audio?</div>
             <div class="info-content">
-                <p>This is the <strong>target voice style</strong> you want to adopt. It should be:</p>
+                <p>This is <strong>your original voice recording</strong> that you want to transform. It can be:</p>
                 <ul>
-                    <li>A clear recording of the accent you want</li>
-                    <li>High-quality audio with good pronunciation</li>
-                    <li>Similar gender to your input voice for best results</li>
+                    <li>Your speech in your current accent</li>
+                    <li>Any audio you want to change the accent of</li>
+                    <li>The content that will keep its words but get a new accent</li>
                 </ul>
-                <p><strong>Example:</strong> If you want to sound British, upload a clear recording of a British speaker with the same gender as your input voice.</p>
+                <p><strong>Example:</strong> If you speak with an American accent and want to sound British, upload your American-accented speech here.</p>
             </div>
         </div>
         """, unsafe_allow_html=True)
