@@ -1,7 +1,7 @@
 #!/bin/bash
 
-echo "🎵 Starting OpenVoice AI Suite (2 Pages)"
-echo "=========================================="
+echo "🎵 Starting OpenVoice AI Suite (2 Pages) with Conda"
+echo "=================================================="
 echo ""
 echo "📋 Features available:"
 echo "  1. 🏠 Welcome Page - Overview of all features"
