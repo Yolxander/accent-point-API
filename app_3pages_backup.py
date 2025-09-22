@@ -321,168 +321,107 @@ def create_audio_player(audio_data, sample_rate, label="Audio"):
 
 def generate_real_tts(text, voice_file_path=None):
     """Generate real text-to-speech audio using available TTS libraries"""
-    import tempfile
-    import soundfile as sf
-    import numpy as np
-    import os
-    import streamlit as st
-    
     try:
-        st.info("🎤 Generating speech using TTS...")
-        
         # First try gTTS (Google Text-to-Speech) - requires internet
-        try:
-            from gtts import gTTS
-            st.info("Using Google Text-to-Speech (gTTS)...")
-            
-            # Create a temporary file for the TTS output
-            with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as temp_file:
-                temp_path = temp_file.name
-            
-            # Generate speech using gTTS
-            tts = gTTS(text=text, lang='en', slow=False)
-            tts.save(temp_path)
-            
-            # Load the generated audio
-            audio_data, sample_rate = sf.read(temp_path)
-            
-            # Clean up temporary file
-            os.unlink(temp_path)
-            
-            st.success(f"✅ gTTS generated audio: {len(audio_data)} samples at {sample_rate}Hz")
-            
-            # If we have a voice file, try to match some characteristics
-            if voice_file_path and os.path.exists(voice_file_path):
-                try:
-                    voice_data, voice_sr = sf.read(voice_file_path)
-                    if len(voice_data) > 0:
-                        # Get average amplitude from voice file to match volume
-                        avg_amplitude = np.mean(np.abs(voice_data))
-                        current_amplitude = np.mean(np.abs(audio_data))
-                        if current_amplitude > 0:
-                            # Adjust volume to match reference voice
-                            volume_ratio = avg_amplitude / current_amplitude
-                            audio_data = audio_data * volume_ratio * 0.8  # Scale down a bit for safety
-                except Exception as e:
-                    st.warning(f"Could not analyze reference voice file: {str(e)}")
-            
-            # Normalize to prevent clipping
-            if np.max(np.abs(audio_data)) > 0:
-                audio_data = audio_data / np.max(np.abs(audio_data)) * 0.9
-            
-            return audio_data, sample_rate
-            
-        except Exception as e:
-            st.warning(f"gTTS failed: {str(e)}. Trying fallback method...")
+        if gtts_available:
+            try:
+                # Create a temporary file for the TTS output
+                with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as temp_file:
+                    temp_path = temp_file.name
+                
+                # Generate speech using gTTS
+                tts = gTTS(text=text, lang='en', slow=False)
+                tts.save(temp_path)
+                
+                # Load the generated audio
+                audio_data, sample_rate = sf.read(temp_path)
+                
+                # Clean up temporary file
+                os.unlink(temp_path)
+                
+                # If we have a voice file, try to match some characteristics
+                if voice_file_path and os.path.exists(voice_file_path):
+                    try:
+                        voice_data, voice_sr = sf.read(voice_file_path)
+                        if len(voice_data) > 0:
+                            # Get average amplitude from voice file to match volume
+                            avg_amplitude = np.mean(np.abs(voice_data))
+                            current_amplitude = np.mean(np.abs(audio_data))
+                            if current_amplitude > 0:
+                                # Adjust volume to match reference voice
+                                volume_ratio = avg_amplitude / current_amplitude
+                                audio_data = audio_data * volume_ratio * 0.8  # Scale down a bit for safety
+                    except Exception as e:
+                        st.warning(f"Could not analyze reference voice file: {str(e)}")
+                
+                # Normalize to prevent clipping
+                if np.max(np.abs(audio_data)) > 0:
+                    audio_data = audio_data / np.max(np.abs(audio_data)) * 0.9
+                
+                return audio_data, sample_rate
+                
+            except Exception as e:
+                st.warning(f"gTTS failed: {str(e)}. Trying fallback method...")
         
         # Fallback to pyttsx3 (offline TTS)
-        try:
-            import pyttsx3
-            st.info("Using offline TTS (pyttsx3)...")
-            
-            engine = pyttsx3.init()
-            
-            # Create a temporary file for the TTS output
-            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_file:
-                temp_path = temp_file.name
-            
-            # Configure voice properties
-            voices = engine.getProperty('voices')
-            if voices:
-                engine.setProperty('voice', voices[0].id)  # Use first available voice
-            
-            engine.setProperty('rate', 180)  # Speech rate
-            engine.setProperty('volume', 0.8)  # Volume level
-            
-            # Save speech to file
-            engine.save_to_file(text, temp_path)
-            engine.runAndWait()
-            
-            # Load the generated audio
-            audio_data, sample_rate = sf.read(temp_path)
-            
-            # Clean up temporary file
-            os.unlink(temp_path)
-            
-            st.success(f"✅ pyttsx3 generated audio: {len(audio_data)} samples at {sample_rate}Hz")
-            
-            # If we have a voice file, try to match some characteristics
-            if voice_file_path and os.path.exists(voice_file_path):
-                try:
-                    voice_data, voice_sr = sf.read(voice_file_path)
-                    if len(voice_data) > 0:
-                        # Get average amplitude from voice file to match volume
-                        avg_amplitude = np.mean(np.abs(voice_data))
-                        current_amplitude = np.mean(np.abs(audio_data))
-                        if current_amplitude > 0:
-                            # Adjust volume to match reference voice
-                            volume_ratio = avg_amplitude / current_amplitude
-                            audio_data = audio_data * volume_ratio * 0.8  # Scale down a bit for safety
-                except Exception as e:
-                    st.warning(f"Could not analyze reference voice file: {str(e)}")
-            
-            # Normalize to prevent clipping
-            if np.max(np.abs(audio_data)) > 0:
-                audio_data = audio_data / np.max(np.abs(audio_data)) * 0.9
-            
-            return audio_data, sample_rate
-            
-        except Exception as e:
-            st.warning(f"pyttsx3 failed: {str(e)}. Using fallback simulation...")
+        if pyttsx3_available:
+            try:
+                engine = pyttsx3.init()
+                
+                # Create a temporary file for the TTS output
+                with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_file:
+                    temp_path = temp_file.name
+                
+                # Configure voice properties
+                voices = engine.getProperty('voices')
+                if voices:
+                    engine.setProperty('voice', voices[0].id)  # Use first available voice
+                
+                engine.setProperty('rate', 180)  # Speech rate
+                engine.setProperty('volume', 0.8)  # Volume level
+                
+                # Save speech to file
+                engine.save_to_file(text, temp_path)
+                engine.runAndWait()
+                
+                # Load the generated audio
+                audio_data, sample_rate = sf.read(temp_path)
+                
+                # Clean up temporary file
+                os.unlink(temp_path)
+                
+                # If we have a voice file, try to match some characteristics
+                if voice_file_path and os.path.exists(voice_file_path):
+                    try:
+                        voice_data, voice_sr = sf.read(voice_file_path)
+                        if len(voice_data) > 0:
+                            # Get average amplitude from voice file to match volume
+                            avg_amplitude = np.mean(np.abs(voice_data))
+                            current_amplitude = np.mean(np.abs(audio_data))
+                            if current_amplitude > 0:
+                                # Adjust volume to match reference voice
+                                volume_ratio = avg_amplitude / current_amplitude
+                                audio_data = audio_data * volume_ratio * 0.8  # Scale down a bit for safety
+                    except Exception as e:
+                        st.warning(f"Could not analyze reference voice file: {str(e)}")
+                
+                # Normalize to prevent clipping
+                if np.max(np.abs(audio_data)) > 0:
+                    audio_data = audio_data / np.max(np.abs(audio_data)) * 0.9
+                
+                return audio_data, sample_rate
+                
+            except Exception as e:
+                st.warning(f"pyttsx3 failed: {str(e)}. Using fallback simulation...")
         
-        # Final fallback - simple simulation
-        st.warning("No TTS libraries available. Using simple audio simulation.")
-        return create_simple_tts_simulation(text, voice_file_path)
+        # Final fallback - improved simulation (better than just sine wave)
+        st.warning("No TTS libraries available. Using improved audio simulation.")
+        return create_improved_tts_simulation(text, voice_file_path)
         
     except Exception as e:
         st.error(f"Error in TTS generation: {str(e)}")
         return None, None
 
-def create_simple_tts_simulation(text, voice_file_path):
-    """Create a simple audio simulation when TTS libraries are not available"""
-    import numpy as np
-    import soundfile as sf
-    import os
-    
-    try:
-        # Read the voice file to get characteristics
-        sample_rate = 22050  # Default sample rate
-        if voice_file_path and os.path.exists(voice_file_path):
-            voice_data, sample_rate = sf.read(voice_file_path)
-        
-        # Estimate duration based on text length
-        words = text.split()
-        duration = len(words) * 0.6  # More realistic timing
-        
-        # Create time array
-        t = np.linspace(0, duration, int(sample_rate * duration))
-        
-        # Create a simple waveform that varies with text
-        base_freq = 200 + (hash(text) % 100)
-        waveform = np.sin(2 * np.pi * base_freq * t) * 0.3
-        
-        # Add some variation
-        waveform += 0.1 * np.sin(2 * np.pi * base_freq * 2 * t)
-        
-        # Try to match characteristics of the uploaded voice
-        if voice_file_path and os.path.exists(voice_file_path):
-            try:
-                voice_data, _ = sf.read(voice_file_path)
-                if len(voice_data) > 0:
-                    avg_amplitude = np.mean(np.abs(voice_data))
-                    waveform = waveform * avg_amplitude * 1.5
-            except:
-                pass
-        
-        # Normalize
-        if np.max(np.abs(waveform)) > 0:
-            waveform = waveform / np.max(np.abs(waveform)) * 0.8
-        
-        return waveform, sample_rate
-        
-    except Exception as e:
-        print(f"Error in TTS simulation: {str(e)}")
-        return None, None
 def create_improved_tts_simulation(text, voice_file_path):
     """Create a more realistic audio simulation when TTS libraries are not available"""
     try:
@@ -625,10 +564,10 @@ def show_landing_page():
             <div class="status-badge status-ready">✅ Ready</div>
             <div class="page-title">Text to Audio</div>
             <div class="page-description">
-                Convert any text to natural-sounding speech using advanced TTS technology.
+                Convert text to audio using an uploaded voice file to match voice characteristics and accent.
             </div>
             <div class="page-features">
-                <div class="feature-item">🎤 <strong>High-Quality TTS:</strong> Uses Google Text-to-Speech</div>
+                <div class="feature-item">🎤 <strong>Voice Matching:</strong> Uses uploaded voice characteristics</div>
                 <div class="feature-item">📝 <strong>Custom Text:</strong> Type any text to convert</div>
                 <div class="feature-item">🎧 <strong>Audio Preview:</strong> Listen before downloading</div>
                 <div class="feature-item">💾 <strong>Export Options:</strong> Download as audio files</div>
@@ -680,78 +619,138 @@ def show_audio_to_audio_page():
         st.info("Make sure app.py exists in the current directory.")
 
 def show_text_to_audio_page():
-    """Show the simplified text to audio page - text to speech only"""
+    """Show the text to audio page (NEW FUNCTIONALITY)"""
     # Back button
     st.markdown('<a href="?page=landing" class="back-button">← Back to Main Menu</a>', unsafe_allow_html=True)
     
     # Header
-    st.markdown('<h1 class="main-header">📝➡️🎵 Text to Speech Converter</h1>', unsafe_allow_html=True)
-    st.markdown('<p class="subtitle">Convert any text to natural-sounding speech using advanced TTS technology</p>', unsafe_allow_html=True)
+    st.markdown('<h1 class="main-header">📝➡️🎵 Text to Audio Converter</h1>', unsafe_allow_html=True)
+    st.markdown('<p class="subtitle">Convert text to audio using an uploaded voice file to match voice characteristics and accent</p>', unsafe_allow_html=True)
     
     # Initialize session state
     if 'generated_audio' not in st.session_state:
         st.session_state.generated_audio = None
+    if 'voice_file_path' not in st.session_state:
+        st.session_state.voice_file_path = None
     
-    # Main content area
-    st.markdown("""
-    <div class="audio-section">
-        <div class="audio-header">
-            <div class="audio-icon">📝</div>
-            <div>
-                <h3 class="audio-title">Text Input</h3>
-                <p class="audio-description">Enter the text you want to convert to speech</p>
+    # Two-column layout
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        # Text input section
+        st.markdown("""
+        <div class="audio-section">
+            <div class="audio-header">
+                <div class="audio-icon">📝</div>
+                <div>
+                    <h3 class="audio-title">Text Input</h3>
+                    <p class="audio-description">Enter the text you want to convert to audio</p>
+                </div>
             </div>
         </div>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Text input
-    text_input = st.text_area(
-        "Type your text here:",
-        placeholder="Enter the text you want to convert to speech... For example: 'Hello, this is a demonstration of text to speech conversion!'",
-        height=150,
-        help="Enter any text you want to convert to speech"
-    )
-    
-    # Tips
-    st.markdown("**💡 Tips:**")
-    st.markdown("• Keep text under 500 characters for best results")
-    st.markdown("• Use punctuation for natural pauses")
-    st.markdown("• The system will use high-quality TTS engines")
+        """, unsafe_allow_html=True)
+        
+        text_input = st.text_area(
+            "Type your text here:",
+            placeholder="Enter the text you want to convert to speech... For example: 'Hello, this is a demonstration of text to audio conversion using your uploaded voice file!'",
+            height=150,
+            help="Enter any text you want to convert to audio"
+        )
+        
+        # Tips
+        st.markdown("**💡 Tips:**")
+        st.markdown("• Keep text under 500 characters for best results")
+        st.markdown("• Use punctuation for natural pauses")
+        st.markdown("• Avoid special characters")
+        
+    with col2:
+        # Voice file upload section
+        st.markdown("""
+        <div class="audio-section">
+            <div class="audio-header">
+                <div class="audio-icon">🎤</div>
+                <div>
+                    <h3 class="audio-title">Reference Voice</h3>
+                    <p class="audio-description">Upload the voice file to match characteristics and accent</p>
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.markdown("""
+        <div class="upload-area">
+            <div class="upload-icon">🎤</div>
+            <div class="upload-text">Upload your reference voice file</div>
+            <div class="upload-subtext">Drag and drop file here or click to browse<br>Limit 200MB per file • WAV, MP3, FLAC, M4A</div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        voice_file = st.file_uploader(
+            "Choose your reference voice file", 
+            type=['wav', 'mp3', 'flac', 'm4a'],
+            key="voice_file",
+            help="Upload the voice file whose characteristics you want to match",
+            label_visibility="collapsed"
+        )
+        
+        if voice_file is not None:
+            st.success("✅ Voice file uploaded successfully!")
+            
+            # Preview the audio
+            try:
+                voice_data, voice_sr = load_audio_file(voice_file)
+                
+                # Save to temporary file for processing
+                with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_voice:
+                    sf.write(temp_voice.name, voice_data, voice_sr)
+                    st.session_state.voice_file_path = temp_voice.name
+                
+                # Display audio player
+                st.markdown(create_audio_player(voice_data, voice_sr, "Reference Voice"), unsafe_allow_html=True)
+                
+                # Show file info
+                duration = len(voice_data) / voice_sr
+                st.markdown(f"**Duration:** {duration:.2f} seconds")
+                st.markdown(f"**Sample Rate:** {voice_sr} Hz")
+                
+            except Exception as e:
+                st.error(f"Error loading voice file: {str(e)}")
+                voice_file = None
     
     # Generate audio section
-    if text_input.strip():
-        st.markdown("### 🎯 Generate Speech")
+    if text_input.strip() and voice_file is not None:
+        st.markdown("### 🎯 Generate Audio")
         
         col1, col2 = st.columns([2, 1])
         
         with col1:
-            if st.button("🎵 Generate Speech from Text", type="primary", use_container_width=True):
-                with st.spinner("Generating speech... This may take a moment."):
-                    # Generate the speech using TTS
-                    waveform, sample_rate = generate_real_tts(text_input)
+            if st.button("🎵 Generate Audio from Text", type="primary", use_container_width=True):
+                with st.spinner("Generating audio... This may take a moment."):
+                    # Generate the speech using the uploaded voice file
+                    waveform, sample_rate = generate_real_tts(text_input, st.session_state.voice_file_path)
                     
                     if waveform is not None:
                         st.session_state.generated_audio = {
                             'waveform': waveform,
                             'sample_rate': sample_rate,
-                            'text': text_input
+                            'text': text_input,
+                            'voice_file': voice_file.name
                         }
-                        st.success("✅ Speech generated successfully!")
+                        st.success("✅ Audio generated successfully!")
                     else:
-                        st.error("❌ Failed to generate speech.")
+                        st.error("❌ Failed to generate audio.")
         
         with col2:
             st.markdown("**⚙️ Settings:**")
             st.markdown("• Text length: " + str(len(text_input.split())) + " words")
-            st.markdown("• Estimated duration: ~" + str(len(text_input.split()) * 0.6) + " seconds")
-            st.markdown("• TTS Engine: Google TTS")
+            st.markdown("• Estimated duration: ~" + str(len(text_input.split()) * 0.5) + " seconds")
+            st.markdown("• Voice: " + (voice_file.name if voice_file else "None"))
         
         # Display generated audio
         if st.session_state.generated_audio:
             audio_data = st.session_state.generated_audio
             
-            st.markdown("### ✅ Generated Speech")
+            st.markdown("### ✅ Generated Audio")
             
             # Create audio player for generated audio
             try:
@@ -761,14 +760,14 @@ def show_text_to_audio_page():
                 buffer.seek(0)
                 
                 # Display audio player
-                st.markdown(create_audio_player(audio_data['waveform'], audio_data['sample_rate'], "Generated Speech"), unsafe_allow_html=True)
+                st.markdown(create_audio_player(audio_data['waveform'], audio_data['sample_rate'], "Generated Audio"), unsafe_allow_html=True)
                 
                 # Download button
                 audio_bytes = buffer.getvalue()
                 st.download_button(
-                    label="💾 Download Generated Speech",
+                    label="💾 Download Generated Audio",
                     data=audio_bytes,
-                    file_name=f"generated_speech_{len(audio_data['text'])}_chars.wav",
+                    file_name=f"generated_audio_{audio_data['voice_file']}.wav",
                     mime="audio/wav"
                 )
                 
@@ -787,40 +786,41 @@ def show_text_to_audio_page():
                 # Show the text that was converted
                 st.markdown("### 📝 Converted Text")
                 st.markdown(f"**Text:** {audio_data['text']}")
+                st.markdown(f"**Reference Voice:** {audio_data['voice_file']}")
                 
             except Exception as e:
                 st.error(f"Error creating audio player: {str(e)}")
     
-    else:
+    elif not text_input.strip():
         st.warning("⚠️ Please enter some text to convert.")
+    elif voice_file is None:
+        st.warning("⚠️ Please upload a reference voice file.")
     
     # Information section
-    st.markdown("### 🎯 How Text to Speech Works")
+    st.markdown("### 🎯 How Text to Audio Works")
     st.markdown("""
-    This feature converts your text to natural-sounding speech by:
+    This feature converts your text to audio by:
     
-    1. **Processing your text** - Prepares the text for speech synthesis
-    2. **Using advanced TTS** - Employs Google Text-to-Speech for high-quality output
-    3. **Generating audio** - Creates natural-sounding speech from your text
+    1. **Analyzing your uploaded voice file** - Extracts voice characteristics, accent, and tone
+    2. **Processing your text** - Prepares the text for speech synthesis
+    3. **Generating audio** - Creates speech that matches your reference voice characteristics
     4. **Delivering results** - Provides audio file for download
     
     **Perfect for:**
-    - Creating voiceovers and narrations
+    - Creating custom voiceovers with specific accents
+    - Generating speech in your own voice style
+    - Content creation with consistent voice characteristics
     - Accessibility applications
-    - Content creation
-    - Language learning
-    - Podcast and video production
     """)
     
     # Footer
     st.markdown("---")
     st.markdown("""
     <div style="text-align: center; color: #666; margin-top: 2rem;">
-        <p>📝➡️🎵 Text to Speech Converter | Powered by Advanced TTS</p>
-        <p>Convert any text to natural-sounding speech</p>
+        <p>📝➡️🎵 Text to Audio Converter | Powered by OpenVoice AI</p>
+        <p>Convert text to speech using uploaded voice characteristics</p>
     </div>
     """, unsafe_allow_html=True)
-
 
 if __name__ == "__main__":
     main()
