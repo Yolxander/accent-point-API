@@ -625,11 +625,11 @@ def show_landing_page():
             <div class="status-badge status-ready">✅ Ready</div>
             <div class="page-title">Text to Audio</div>
             <div class="page-description">
-                Convert any text to natural-sounding speech using advanced TTS technology.
+                Convert text to speech, then apply voice characteristics from a reference audio using OpenVoice AI.
             </div>
             <div class="page-features">
-                <div class="feature-item">🎤 <strong>High-Quality TTS:</strong> Uses Google Text-to-Speech</div>
-                <div class="feature-item">📝 <strong>Custom Text:</strong> Type any text to convert</div>
+                <div class="feature-item">🎤 <strong>Voice Conversion:</strong> Apply reference voice characteristics</div>
+                <div class="feature-item">📝 <strong>Text to Speech:</strong> Convert text to natural speech</div>
                 <div class="feature-item">🎧 <strong>Audio Preview:</strong> Listen before downloading</div>
                 <div class="feature-item">💾 <strong>Export Options:</strong> Download as audio files</div>
             </div>
@@ -680,19 +680,29 @@ def show_audio_to_audio_page():
         st.info("Make sure app.py exists in the current directory.")
 
 def show_text_to_audio_page():
-    """Show the simplified text to audio page - text to speech only"""
+    """Enhanced text to audio page with voice conversion capability"""
     # Back button
     st.markdown('<a href="?page=landing" class="back-button">← Back to Main Menu</a>', unsafe_allow_html=True)
     
     # Header
-    st.markdown('<h1 class="main-header">📝➡️🎵 Text to Speech Converter</h1>', unsafe_allow_html=True)
-    st.markdown('<p class="subtitle">Convert any text to natural-sounding speech using advanced TTS technology</p>', unsafe_allow_html=True)
+    st.markdown('<h1 class="main-header">📝➡️🎵 Text to Speech with Voice Conversion</h1>', unsafe_allow_html=True)
+    st.markdown('<p class="subtitle">Convert text to speech, then apply voice characteristics from a reference audio</p>', unsafe_allow_html=True)
     
     # Initialize session state
     if 'generated_audio' not in st.session_state:
         st.session_state.generated_audio = None
+    if 'reference_voice' not in st.session_state:
+        st.session_state.reference_voice = None
+    if 'converted_audio' not in st.session_state:
+        st.session_state.converted_audio = None
+    if 'voice_file_path' not in st.session_state:
+        st.session_state.voice_file_path = None
     
-    # Main content area
+    # Check OpenVoice installation
+    openvoice_available = check_openvoice_installation()
+    
+    # Step 1: Text Input and TTS Generation
+    st.markdown("### 📝 Step 1: Text to Speech Generation")
     st.markdown("""
     <div class="audio-section">
         <div class="audio-header">
@@ -719,9 +729,9 @@ def show_text_to_audio_page():
     st.markdown("• Use punctuation for natural pauses")
     st.markdown("• The system will use high-quality TTS engines")
     
-    # Generate audio section
+    # Generate TTS audio
     if text_input.strip():
-        st.markdown("### 🎯 Generate Speech")
+        st.markdown("#### 🎯 Generate Speech")
         
         col1, col2 = st.columns([2, 1])
         
@@ -747,11 +757,11 @@ def show_text_to_audio_page():
             st.markdown("• Estimated duration: ~" + str(len(text_input.split()) * 0.6) + " seconds")
             st.markdown("• TTS Engine: Google TTS")
         
-        # Display generated audio
+        # Display generated TTS audio
         if st.session_state.generated_audio:
             audio_data = st.session_state.generated_audio
             
-            st.markdown("### ✅ Generated Speech")
+            st.markdown("#### ✅ Generated Speech")
             
             # Create audio player for generated audio
             try:
@@ -763,7 +773,7 @@ def show_text_to_audio_page():
                 # Display audio player
                 st.markdown(create_audio_player(audio_data['waveform'], audio_data['sample_rate'], "Generated Speech"), unsafe_allow_html=True)
                 
-                # Download button
+                # Download button for TTS audio
                 audio_bytes = buffer.getvalue()
                 st.download_button(
                     label="💾 Download Generated Speech",
@@ -773,7 +783,7 @@ def show_text_to_audio_page():
                 )
                 
                 # Show generation info
-                st.markdown("### 📊 Generation Info")
+                st.markdown("#### 📊 Generation Info")
                 col1, col2, col3 = st.columns(3)
                 
                 with col1:
@@ -785,7 +795,7 @@ def show_text_to_audio_page():
                     st.metric("Audio Duration", f"{duration:.2f} seconds")
                 
                 # Show the text that was converted
-                st.markdown("### 📝 Converted Text")
+                st.markdown("#### 📝 Converted Text")
                 st.markdown(f"**Text:** {audio_data['text']}")
                 
             except Exception as e:
@@ -793,31 +803,221 @@ def show_text_to_audio_page():
     
     else:
         st.warning("⚠️ Please enter some text to convert.")
+        return
+    
+    # Step 2: Voice Conversion (only if TTS audio was generated)
+    if st.session_state.generated_audio:
+        st.markdown("---")
+        st.markdown("### 🎤 Step 2: Voice Conversion")
+        st.markdown("Upload a reference voice file to apply its characteristics to the generated speech")
+        
+        # Reference voice upload section
+        st.markdown("""
+        <div class="audio-section">
+            <div class="audio-header">
+                <div class="audio-icon">🎤</div>
+                <div>
+                    <h3 class="audio-title">Reference Voice</h3>
+                    <p class="audio-description">Upload the voice file whose characteristics you want to apply</p>
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.markdown("""
+        <div class="upload-area">
+            <div class="upload-icon">🎤</div>
+            <div class="upload-text">Upload your reference voice file</div>
+            <div class="upload-subtext">Drag and drop file here or click to browse<br>Limit 200MB per file • WAV, MP3, FLAC, M4A</div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        reference_voice_file = st.file_uploader(
+            "Choose your reference voice file", 
+            type=['wav', 'mp3', 'flac', 'm4a'],
+            key="reference_voice_file",
+            help="Upload the voice file whose characteristics you want to apply to the generated speech",
+            label_visibility="collapsed"
+        )
+        
+        if reference_voice_file is not None:
+            st.success("✅ Reference voice file uploaded successfully!")
+            
+            # Preview the reference audio
+            try:
+                ref_voice_data, ref_voice_sr = load_audio_file(reference_voice_file)
+                
+                # Save to temporary file for processing
+                with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_ref:
+                    sf.write(temp_ref.name, ref_voice_data, ref_voice_sr)
+                    st.session_state.voice_file_path = temp_ref.name
+                
+                # Display audio player
+                st.markdown(create_audio_player(ref_voice_data, ref_voice_sr, "Reference Voice"), unsafe_allow_html=True)
+                
+                # Show file info
+                duration = len(ref_voice_data) / ref_voice_sr
+                st.markdown(f"**Duration:** {duration:.2f} seconds")
+                st.markdown(f"**Sample Rate:** {ref_voice_sr} Hz")
+                
+                # Store reference voice data
+                st.session_state.reference_voice = {
+                    'data': ref_voice_data,
+                    'sample_rate': ref_voice_sr,
+                    'name': reference_voice_file.name
+                }
+                
+            except Exception as e:
+                st.error(f"Error loading reference voice file: {str(e)}")
+                reference_voice_file = None
+        
+        # Voice conversion section
+        if st.session_state.generated_audio and st.session_state.reference_voice and openvoice_available:
+            st.markdown("#### 🔄 Convert Voice with OpenVoice AI")
+            
+            col1, col2 = st.columns([2, 1])
+            
+            with col1:
+                if st.button("🎭 Apply Voice Characteristics", type="primary", use_container_width=True):
+                    with st.spinner("Converting voice using OpenVoice AI... This may take a few minutes."):
+                        try:
+                            # Import tune_one function from the __main__ module
+                            import openvoice_cli.__main__ as openvoice_main
+                            tune_one = openvoice_main.tune_one
+                            
+                            # Get the generated TTS audio
+                            tts_audio = st.session_state.generated_audio
+                            
+                            # Create temporary files
+                            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_input:
+                                sf.write(temp_input.name, tts_audio['waveform'], tts_audio['sample_rate'])
+                                temp_input_path = temp_input.name
+                            
+                            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_ref:
+                                sf.write(temp_ref.name, st.session_state.reference_voice['data'], st.session_state.reference_voice['sample_rate'])
+                                temp_ref_path = temp_ref.name
+                            
+                            # Create output file path
+                            output_path = "converted_voice_output.wav"
+                            
+                            # Run OpenVoice conversion
+                            tune_one(
+                                input_file=temp_input_path,
+                                ref_file=temp_ref_path,
+                                output_file=output_path,
+                                device='cpu'  # Use CPU for stability
+                            )
+                            
+                            # Load the converted audio
+                            if os.path.exists(output_path):
+                                converted_data, converted_sr = sf.read(output_path)
+                                
+                                st.session_state.converted_audio = {
+                                    'waveform': converted_data,
+                                    'sample_rate': converted_sr,
+                                    'text': tts_audio['text'],
+                                    'reference_voice': st.session_state.reference_voice['name']
+                                }
+                                
+                                st.success("✅ Voice conversion completed successfully!")
+                                
+                                # Clean up temporary files
+                                os.unlink(temp_input_path)
+                                os.unlink(temp_ref_path)
+                                
+                            else:
+                                st.error("❌ Voice conversion failed. Output file not found.")
+                                
+                        except Exception as e:
+                            st.error(f"❌ Error during voice conversion: {str(e)}")
+                            st.info("Make sure OpenVoice CLI is properly installed and try again.")
+            
+            with col2:
+                st.markdown("**⚙️ Conversion Settings:**")
+                st.markdown("• Input: Generated TTS audio")
+                st.markdown("• Reference: Uploaded voice")
+                st.markdown("• Device: CPU")
+                st.markdown("• Engine: OpenVoice AI")
+        
+        elif not openvoice_available:
+            st.warning("⚠️ OpenVoice CLI not available. Voice conversion requires OpenVoice installation.")
+            st.code("pip install openvoice-cli", language="bash")
+        
+        # Display converted audio
+        if st.session_state.converted_audio:
+            converted_data = st.session_state.converted_audio
+            
+            st.markdown("#### 🎉 Converted Voice Audio")
+            
+            # Create audio player for converted audio
+            try:
+                # Convert numpy array to audio bytes
+                buffer = BytesIO()
+                sf.write(buffer, converted_data['waveform'], converted_data['sample_rate'], format='WAV')
+                buffer.seek(0)
+                
+                # Display audio player
+                st.markdown(create_audio_player(converted_data['waveform'], converted_data['sample_rate'], "Converted Voice Audio"), unsafe_allow_html=True)
+                
+                # Download button for converted audio
+                audio_bytes = buffer.getvalue()
+                st.download_button(
+                    label="💾 Download Converted Voice Audio",
+                    data=audio_bytes,
+                    file_name=f"converted_voice_{len(converted_data['text'])}_chars.wav",
+                    mime="audio/wav"
+                )
+                
+                # Show conversion info
+                st.markdown("#### 📊 Conversion Info")
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    st.metric("Text Length", f"{len(converted_data['text'])} characters")
+                with col2:
+                    st.metric("Word Count", f"{len(converted_data['text'].split())} words")
+                with col3:
+                    duration = len(converted_data['waveform']) / converted_data['sample_rate']
+                    st.metric("Audio Duration", f"{duration:.2f} seconds")
+                
+                # Show the conversion details
+                st.markdown("#### 📝 Conversion Details")
+                st.markdown(f"**Original Text:** {converted_data['text']}")
+                st.markdown(f"**Reference Voice:** {converted_data['reference_voice']}")
+                
+            except Exception as e:
+                st.error(f"Error creating audio player: {str(e)}")
     
     # Information section
-    st.markdown("### 🎯 How Text to Speech Works")
+    st.markdown("---")
+    st.markdown("### 🎯 How Text to Speech with Voice Conversion Works")
     st.markdown("""
-    This feature converts your text to natural-sounding speech by:
+    This enhanced feature works in two steps:
     
+    **Step 1: Text to Speech Generation**
     1. **Processing your text** - Prepares the text for speech synthesis
     2. **Using advanced TTS** - Employs Google Text-to-Speech for high-quality output
     3. **Generating audio** - Creates natural-sounding speech from your text
-    4. **Delivering results** - Provides audio file for download
+    
+    **Step 2: Voice Conversion**
+    1. **Upload reference voice** - Provide a voice file with desired characteristics
+    2. **Apply OpenVoice AI** - Uses advanced AI to match voice characteristics
+    3. **Generate final audio** - Creates speech with your text but reference voice characteristics
     
     **Perfect for:**
-    - Creating voiceovers and narrations
+    - Creating voiceovers with specific voice characteristics
+    - Voice acting and character work
+    - Language learning with native accents
+    - Content creation with consistent voice styles
     - Accessibility applications
-    - Content creation
-    - Language learning
-    - Podcast and video production
     """)
     
     # Footer
     st.markdown("---")
     st.markdown("""
     <div style="text-align: center; color: #666; margin-top: 2rem;">
-        <p>📝➡️🎵 Text to Speech Converter | Powered by Advanced TTS</p>
-        <p>Convert any text to natural-sounding speech</p>
+        <p>📝➡️🎵 Text to Speech with Voice Conversion | Powered by Advanced TTS & OpenVoice AI</p>
+        <p>Convert text to speech and apply voice characteristics</p>
     </div>
     """, unsafe_allow_html=True)
 
