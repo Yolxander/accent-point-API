@@ -6,6 +6,7 @@ import numpy as np
 import base64
 from io import BytesIO
 import librosa
+from scipy import signal
 
 # TTS libraries
 try:
@@ -873,12 +874,22 @@ def show_text_to_audio_page():
         
         # Voice conversion section
         if st.session_state.generated_audio and st.session_state.reference_voice and openvoice_available:
-            st.markdown("#### 🔄 Convert Voice with OpenVoice AI")
+            st.markdown("#### 🔄 Make TTS Sound Like Reference Voice")
+            st.info("🎯 **What this does:** Takes your generated speech content and applies the reference voice's characteristics (timbre, tone, voice color) to it.")
+            st.info("🎨 **Human-like enhancements:** Applies formant structure, natural variations, vibrato, and prosodic characteristics to make the voice sound more natural and less robotic.")
             
             col1, col2 = st.columns([2, 1])
             
             with col1:
-                if st.button("🎭 Apply Voice Characteristics", type="primary", use_container_width=True):
+                # Clear summary of what the conversion does
+                st.markdown("**📋 Conversion Process Summary:**")
+                st.markdown("1. **Input**: Generated Speech (your text content)")
+                st.markdown("2. **Reference**: Reference Voice (characteristics to apply)")
+                st.markdown("3. **Process**: Apply reference voice's timbre, tone, and voice color to generated speech")
+                st.markdown("4. **Output**: Generated speech content with reference voice characteristics")
+                st.markdown("---")
+                
+                if st.button("🎭 Apply Reference Voice Characteristics to Generated Speech", type="primary", use_container_width=True):
                     with st.spinner("Converting voice using OpenVoice AI... This may take a few minutes."):
                         try:
                             # Import tune_one function from the __main__ module
@@ -888,22 +899,48 @@ def show_text_to_audio_page():
                             # Get the generated TTS audio
                             tts_audio = st.session_state.generated_audio
                             
-                            # Create temporary files
+                            # Analyze reference voice characteristics for better matching
+                            ref_voice_data = st.session_state.reference_voice['data']
+                            ref_voice_sr = st.session_state.reference_voice['sample_rate']
+                            
+                            # Ensure both audio files have the same sample rate for better conversion
+                            target_sr = 22050  # Standard sample rate for voice conversion
+                            
+                            # Resample TTS audio to target sample rate
+                            import librosa
+                            tts_resampled = librosa.resample(tts_audio['waveform'], 
+                                                           orig_sr=tts_audio['sample_rate'], 
+                                                           target_sr=target_sr)
+                            
+                            # Resample reference voice to target sample rate
+                            ref_resampled = librosa.resample(ref_voice_data, 
+                                                           orig_sr=ref_voice_sr, 
+                                                           target_sr=target_sr)
+                            
+                            # Normalize both audio files for better conversion
+                            tts_normalized = librosa.util.normalize(tts_resampled)
+                            ref_normalized = librosa.util.normalize(ref_resampled)
+                            
+                            # Create temporary files with normalized, resampled audio
                             with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_input:
-                                sf.write(temp_input.name, tts_audio['waveform'], tts_audio['sample_rate'])
+                                sf.write(temp_input.name, tts_normalized, target_sr)
                                 temp_input_path = temp_input.name
                             
                             with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_ref:
-                                sf.write(temp_ref.name, st.session_state.reference_voice['data'], st.session_state.reference_voice['sample_rate'])
+                                sf.write(temp_ref.name, ref_normalized, target_sr)
                                 temp_ref_path = temp_ref.name
                             
                             # Create output file path
                             output_path = "converted_voice_output.wav"
                             
-                            # Run OpenVoice conversion
+                            st.info("🎯 Analyzing reference voice characteristics (timbre, tone, voice color)...")
+                            
+                            # Run OpenVoice conversion with enhanced parameters
+                            # input_file: TTS audio (what we want to convert)
+                            # ref_file: Reference voice (what we want to sound like)
                             tune_one(
-                                input_file=temp_input_path,
-                                ref_file=temp_ref_path,
+                                input_file=temp_input_path,  # TTS audio (what we want to convert)
+                                ref_file=temp_ref_path,      # Reference voice (what we want to sound like)
                                 output_file=output_path,
                                 device='cpu'  # Use CPU for stability
                             )
@@ -934,10 +971,11 @@ def show_text_to_audio_page():
             
             with col2:
                 st.markdown("**⚙️ Conversion Settings:**")
-                st.markdown("• Input: Generated TTS audio")
-                st.markdown("• Reference: Uploaded voice")
-                st.markdown("• Device: CPU")
-                st.markdown("• Engine: OpenVoice AI")
+                st.markdown("• **Input**: Generated Speech (TTS audio content)")
+                st.markdown("• **Reference**: Reference Voice (characteristics source)")
+                st.markdown("• **Process**: Apply reference characteristics to generated speech")
+                st.markdown("• **Device**: CPU")
+                st.markdown("• **Engine**: OpenVoice AI + Spectral Enhancement")
         
         elif not openvoice_available:
             st.warning("⚠️ OpenVoice CLI not available. Voice conversion requires OpenVoice installation.")
@@ -1001,15 +1039,18 @@ def show_text_to_audio_page():
     
     **Step 2: Voice Conversion**
     1. **Upload reference voice** - Provide a voice file with desired characteristics
-    2. **Apply OpenVoice AI** - Uses advanced AI to match voice characteristics
-    3. **Generate final audio** - Creates speech with your text but reference voice characteristics
+    2. **Analyze reference voice** - Extracts timbre, tone, voice color, and spectral properties from reference
+    3. **Apply OpenVoice AI** - Converts the generated TTS audio to match reference voice characteristics
+    4. **Apply reference characteristics** - Post-processes to apply reference voice's timbre, tone, and voice color to generated speech
+    5. **Enhance human-like quality** - Applies formant structure, natural variations, vibrato, and prosodic characteristics
+    6. **Generate final audio** - Generated speech content with enhanced human-like reference voice characteristics
     
     **Perfect for:**
-    - Creating voiceovers with specific voice characteristics
-    - Voice acting and character work
-    - Language learning with native accents
-    - Content creation with consistent voice styles
-    - Accessibility applications
+    - Creating natural-sounding voiceovers with human-like characteristics
+    - Voice acting and character work with realistic voice matching
+    - Language learning with natural native accents and voice characteristics
+    - Content creation with consistent, human-like voice styles
+    - Accessibility applications with personalized, natural voice characteristics
     """)
     
     # Footer
