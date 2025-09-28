@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  openvoice-api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=production
+      - HOST=0.0.0.0
+      - PORT=8000
+      - ALLOWED_ORIGINS=http://localhost:3000,https://yourdomain.com
+      - OPENVOICE_DEVICE=cpu
+      - MAX_FILE_SIZE=52428800
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./uploads:/tmp/openvoice_uploads
+      - ./outputs:/tmp/openvoice_outputs
+      - ./temp:/tmp/openvoice_api
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Optional: Redis for caching and session management
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+
+volumes:
+  redis_data:
