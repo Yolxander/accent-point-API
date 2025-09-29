@@ -108,3 +108,43 @@ class ConversionProgress(BaseModel):
     current_step_number: int
     estimated_time_remaining: Optional[int] = None  # seconds
     message: str
+
+
+class VoiceToVoiceRequest(BaseModel):
+    """Request model for voice-to-voice transformation"""
+    input_audio: str  # Base64 encoded audio or file path
+    reference_audio: str  # Base64 encoded audio or file path
+    transformation_type: str = "voice_conversion"  # voice_conversion, accent_change, gender_swap, etc.
+    device: str = "cpu"
+    normalize: bool = True
+    target_sample_rate: Optional[int] = None
+    voice_characteristics: Optional[Dict[str, Any]] = None  # Additional voice parameters
+    output_format: str = "wav"  # wav, mp3, flac
+    quality: str = "high"  # low, medium, high
+
+
+class VoiceToVoiceResponse(BaseModel):
+    """Response model for voice-to-voice transformation"""
+    conversion_id: str
+    status: ConversionStatus
+    message: str
+    transformation_type: str
+    input_duration: Optional[float] = None
+    output_duration: Optional[float] = None
+    output_file: Optional[str] = None
+    file_size: Optional[int] = None
+    download_url: Optional[str] = None
+    processing_time: Optional[float] = None
+    created_at: datetime = Field(default_factory=datetime.now)
+    completed_at: Optional[datetime] = None
+    error_message: Optional[str] = None
+
+
+class AudioTransformationOptions(BaseModel):
+    """Audio transformation options"""
+    pitch_shift: Optional[float] = Field(None, ge=-12.0, le=12.0)  # Semitones
+    speed_change: Optional[float] = Field(None, ge=0.5, le=2.0)  # Speed multiplier
+    volume_adjustment: Optional[float] = Field(None, ge=0.1, le=3.0)  # Volume multiplier
+    noise_reduction: bool = False
+    echo_removal: bool = False
+    voice_enhancement: bool = False

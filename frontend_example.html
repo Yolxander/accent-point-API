@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice-to-Voice Transformation Demo</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        input[type="file"], input[type="text"], input[type="number"], select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        .row {
+            display: flex;
+            gap: 20px;
+        }
+        .col {
+            flex: 1;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+            margin-top: 20px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            display: none;
+        }
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .loading {
+            text-align: center;
+            color: #666;
+        }
+        audio {
+            width: 100%;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎤 Voice-to-Voice Transformation</h1>
+        
+        <form id="voiceForm">
+            <div class="row">
+                <div class="col">
+                    <div class="form-group">
+                        <label for="inputAudio">Input Audio File:</label>
+                        <input type="file" id="inputAudio" accept="audio/*" required>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="form-group">
+                        <label for="referenceAudio">Reference Audio File:</label>
+                        <input type="file" id="referenceAudio" accept="audio/*" required>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col">
+                    <div class="form-group">
+                        <label for="transformationType">Transformation Type:</label>
+                        <select id="transformationType">
+                            <option value="voice_conversion">Voice Conversion</option>
+                            <option value="accent_change">Accent Change</option>
+                            <option value="gender_swap">Gender Swap</option>
+                            <option value="age_change">Age Change</option>
+                            <option value="emotion_change">Emotion Change</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="form-group">
+                        <label for="outputFormat">Output Format:</label>
+                        <select id="outputFormat">
+                            <option value="wav">WAV</option>
+                            <option value="mp3">MP3</option>
+                            <option value="flac">FLAC</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col">
+                    <div class="form-group">
+                        <label for="pitchShift">Pitch Shift (semitones):</label>
+                        <input type="number" id="pitchShift" min="-12" max="12" step="0.5" value="0">
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="form-group">
+                        <label for="speedChange">Speed Change:</label>
+                        <input type="number" id="speedChange" min="0.5" max="2.0" step="0.1" value="1.0">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col">
+                    <div class="form-group">
+                        <label for="volumeAdjustment">Volume Adjustment:</label>
+                        <input type="number" id="volumeAdjustment" min="0.1" max="3.0" step="0.1" value="1.0">
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="form-group">
+                        <label for="quality">Quality:</label>
+                        <select id="quality">
+                            <option value="high">High</option>
+                            <option value="medium">Medium</option>
+                            <option value="low">Low</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="normalize" checked> Normalize Audio
+                </label>
+            </div>
+            
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="noiseReduction"> Noise Reduction
+                </label>
+            </div>
+            
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="echoRemoval"> Echo Removal
+                </label>
+            </div>
+            
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="voiceEnhancement"> Voice Enhancement
+                </label>
+            </div>
+            
+            <button type="submit" id="transformBtn">Transform Voice</button>
+        </form>
+        
+        <div id="result" class="result"></div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:8000/api/v1';
+        
+        document.getElementById('voiceForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const transformBtn = document.getElementById('transformBtn');
+            const resultDiv = document.getElementById('result');
+            
+            // Show loading state
+            transformBtn.disabled = true;
+            transformBtn.textContent = 'Transforming...';
+            resultDiv.className = 'result loading';
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = '🔄 Processing your voice transformation...';
+            
+            try {
+                // Get form data
+                const formData = new FormData();
+                formData.append('input_audio', document.getElementById('inputAudio').files[0]);
+                formData.append('reference_audio', document.getElementById('referenceAudio').files[0]);
+                formData.append('transformation_type', document.getElementById('transformationType').value);
+                formData.append('device', 'cpu');
+                formData.append('normalize', document.getElementById('normalize').checked);
+                formData.append('output_format', document.getElementById('outputFormat').value);
+                formData.append('quality', document.getElementById('quality').value);
+                formData.append('pitch_shift', document.getElementById('pitchShift').value);
+                formData.append('speed_change', document.getElementById('speedChange').value);
+                formData.append('volume_adjustment', document.getElementById('volumeAdjustment').value);
+                formData.append('noise_reduction', document.getElementById('noiseReduction').checked);
+                formData.append('echo_removal', document.getElementById('echoRemoval').checked);
+                formData.append('voice_enhancement', document.getElementById('voiceEnhancement').checked);
+                
+                // Make API request
+                const response = await fetch(`${API_BASE_URL}/transform-voice`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok && result.status === 'completed') {
+                    // Show success
+                    resultDiv.className = 'result success';
+                    resultDiv.innerHTML = `
+                        <h3>✅ Transformation Completed!</h3>
+                        <p><strong>Conversion ID:</strong> ${result.conversion_id}</p>
+                        <p><strong>Processing Time:</strong> ${result.processing_time?.toFixed(2)}s</p>
+                        <p><strong>File Size:</strong> ${(result.file_size / 1024 / 1024).toFixed(2)} MB</p>
+                        <p><strong>Download:</strong> <a href="${API_BASE_URL}${result.download_url}" target="_blank">Download Audio</a></p>
+                        <audio controls>
+                            <source src="${API_BASE_URL}${result.download_url}" type="audio/wav">
+                            Your browser does not support the audio element.
+                        </audio>
+                    `;
+                } else {
+                    // Show error
+                    resultDiv.className = 'result error';
+                    resultDiv.innerHTML = `
+                        <h3>❌ Transformation Failed</h3>
+                        <p><strong>Error:</strong> ${result.error_message || result.message}</p>
+                        <p><strong>Status:</strong> ${result.status}</p>
+                    `;
+                }
+            } catch (error) {
+                // Show error
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `
+                    <h3>❌ Request Failed</h3>
+                    <p><strong>Error:</strong> ${error.message}</p>
+                    <p>Make sure the API server is running on http://localhost:8000</p>
+                `;
+            } finally {
+                // Reset button
+                transformBtn.disabled = false;
+                transformBtn.textContent = 'Transform Voice';
+            }
+        });
+        
+        // Load transformation types on page load
+        async function loadTransformationTypes() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/transformation-types`);
+                const data = await response.json();
+                
+                const select = document.getElementById('transformationType');
+                select.innerHTML = '';
+                
+                data.transformation_types.forEach(type => {
+                    const option = document.createElement('option');
+                    option.value = type.id;
+                    option.textContent = type.name;
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Failed to load transformation types:', error);
+            }
+        }
+        
+        // Load transformation types when page loads
+        loadTransformationTypes();
+    </script>
+</body>
+</html>

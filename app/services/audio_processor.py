@@ -208,3 +208,202 @@ class AudioProcessor:
         except Exception as e:
             logger.error(f"Failed to apply fade: {str(e)}")
             raise AudioProcessingError(f"Failed to apply fade: {str(e)}")
+    
+    async def pitch_shift(self, audio_data: np.ndarray, sample_rate: int, 
+                         semitones: float) -> np.ndarray:
+        """
+        Apply pitch shift to audio
+        
+        Args:
+            audio_data: Input audio data
+            sample_rate: Sample rate
+            semitones: Pitch shift in semitones (-12 to 12)
+            
+        Returns:
+            Pitch-shifted audio data
+        """
+        try:
+            if semitones == 0:
+                return audio_data
+                
+            # Convert semitones to ratio
+            pitch_ratio = 2 ** (semitones / 12.0)
+            
+            # Apply pitch shift
+            shifted = librosa.effects.pitch_shift(audio_data, sr=sample_rate, n_steps=semitones)
+            
+            logger.info(f"Applied pitch shift: {semitones} semitones")
+            return shifted
+            
+        except Exception as e:
+            logger.error(f"Failed to apply pitch shift: {str(e)}")
+            raise AudioProcessingError(f"Failed to apply pitch shift: {str(e)}")
+    
+    async def speed_change(self, audio_data: np.ndarray, sample_rate: int, 
+                          speed_factor: float) -> np.ndarray:
+        """
+        Change speed of audio
+        
+        Args:
+            audio_data: Input audio data
+            sample_rate: Sample rate
+            speed_factor: Speed multiplier (0.5 to 2.0)
+            
+        Returns:
+            Speed-changed audio data
+        """
+        try:
+            if speed_factor == 1.0:
+                return audio_data
+                
+            # Apply speed change
+            changed = librosa.effects.time_stretch(audio_data, rate=speed_factor)
+            
+            logger.info(f"Applied speed change: {speed_factor}x")
+            return changed
+            
+        except Exception as e:
+            logger.error(f"Failed to apply speed change: {str(e)}")
+            raise AudioProcessingError(f"Failed to apply speed change: {str(e)}")
+    
+    async def volume_adjust(self, audio_data: np.ndarray, volume_factor: float) -> np.ndarray:
+        """
+        Adjust volume of audio
+        
+        Args:
+            audio_data: Input audio data
+            volume_factor: Volume multiplier (0.1 to 3.0)
+            
+        Returns:
+            Volume-adjusted audio data
+        """
+        try:
+            if volume_factor == 1.0:
+                return audio_data
+                
+            # Apply volume adjustment
+            adjusted = audio_data * volume_factor
+            
+            # Prevent clipping
+            if np.max(np.abs(adjusted)) > 1.0:
+                adjusted = adjusted / np.max(np.abs(adjusted))
+            
+            logger.info(f"Applied volume adjustment: {volume_factor}x")
+            return adjusted
+            
+        except Exception as e:
+            logger.error(f"Failed to apply volume adjustment: {str(e)}")
+            raise AudioProcessingError(f"Failed to apply volume adjustment: {str(e)}")
+    
+    async def noise_reduction(self, audio_data: np.ndarray, sample_rate: int) -> np.ndarray:
+        """
+        Apply noise reduction to audio
+        
+        Args:
+            audio_data: Input audio data
+            sample_rate: Sample rate
+            
+        Returns:
+            Noise-reduced audio data
+        """
+        try:
+            # Simple noise reduction using spectral gating
+            # This is a basic implementation - more sophisticated methods could be used
+            
+            # Compute STFT
+            stft = librosa.stft(audio_data)
+            magnitude = np.abs(stft)
+            phase = np.angle(stft)
+            
+            # Estimate noise floor (using first 10% of audio)
+            noise_frames = int(0.1 * stft.shape[1])
+            noise_floor = np.mean(magnitude[:, :noise_frames], axis=1, keepdims=True)
+            
+            # Apply spectral gating
+            gate_threshold = noise_floor * 2.0
+            mask = magnitude > gate_threshold
+            magnitude_clean = magnitude * mask
+            
+            # Reconstruct audio
+            stft_clean = magnitude_clean * np.exp(1j * phase)
+            audio_clean = librosa.istft(stft_clean)
+            
+            logger.info("Applied noise reduction")
+            return audio_clean
+            
+        except Exception as e:
+            logger.error(f"Failed to apply noise reduction: {str(e)}")
+            raise AudioProcessingError(f"Failed to apply noise reduction: {str(e)}")
+    
+    async def echo_removal(self, audio_data: np.ndarray, sample_rate: int) -> np.ndarray:
+        """
+        Remove echo from audio
+        
+        Args:
+            audio_data: Input audio data
+            sample_rate: Sample rate
+            
+        Returns:
+            Echo-removed audio data
+        """
+        try:
+            # Simple echo removal using spectral subtraction
+            # This is a basic implementation
+            
+            # Compute STFT
+            stft = librosa.stft(audio_data)
+            magnitude = np.abs(stft)
+            phase = np.angle(stft)
+            
+            # Apply spectral subtraction (reduce low-magnitude components)
+            alpha = 0.1  # Subtraction factor
+            magnitude_clean = magnitude - alpha * np.mean(magnitude, axis=1, keepdims=True)
+            magnitude_clean = np.maximum(magnitude_clean, 0.01 * magnitude)  # Prevent over-subtraction
+            
+            # Reconstruct audio
+            stft_clean = magnitude_clean * np.exp(1j * phase)
+            audio_clean = librosa.istft(stft_clean)
+            
+            logger.info("Applied echo removal")
+            return audio_clean
+            
+        except Exception as e:
+            logger.error(f"Failed to apply echo removal: {str(e)}")
+            raise AudioProcessingError(f"Failed to apply echo removal: {str(e)}")
+    
+    async def voice_enhancement(self, audio_data: np.ndarray, sample_rate: int) -> np.ndarray:
+        """
+        Enhance voice quality
+        
+        Args:
+            audio_data: Input audio data
+            sample_rate: Sample rate
+            
+        Returns:
+            Voice-enhanced audio data
+        """
+        try:
+            # Apply a combination of enhancements
+            
+            # 1. Normalize
+            enhanced = librosa.util.normalize(audio_data)
+            
+            # 2. Apply pre-emphasis filter
+            enhanced = librosa.effects.preemphasis(enhanced)
+            
+            # 3. Apply gentle compression
+            enhanced = np.tanh(enhanced * 1.2)  # Soft compression
+            
+            # 4. Apply high-pass filter to remove low-frequency noise
+            from scipy import signal
+            nyquist = sample_rate / 2
+            cutoff = 80  # Hz
+            b, a = signal.butter(4, cutoff / nyquist, btype='high')
+            enhanced = signal.filtfilt(b, a, enhanced)
+            
+            logger.info("Applied voice enhancement")
+            return enhanced
+            
+        except Exception as e:
+            logger.error(f"Failed to apply voice enhancement: {str(e)}")
+            raise AudioProcessingError(f"Failed to apply voice enhancement: {str(e)}")

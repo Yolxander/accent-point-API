@@ -1,0 +1,561 @@
+{
+	"info": {
+		"_postman_id": "voice-to-voice-api-collection",
+		"name": "Voice-to-Voice Transformation API",
+		"description": "Complete collection for testing the Voice-to-Voice Transformation API using OpenVoice AI",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Health Check",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/v1/health",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"health"
+					]
+				},
+				"description": "Check if the API is running and OpenVoice is available"
+			},
+			"response": []
+		},
+		{
+			"name": "Get Transformation Types",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/v1/transformation-types",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"transformation-types"
+					]
+				},
+				"description": "Get available transformation types and supported formats"
+			},
+			"response": []
+		},
+		{
+			"name": "Transform Voice (Form Data)",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "input_audio",
+							"type": "file",
+							"src": [],
+							"description": "Input audio file to transform"
+						},
+						{
+							"key": "reference_audio",
+							"type": "file",
+							"src": [],
+							"description": "Reference audio file for voice characteristics"
+						},
+						{
+							"key": "transformation_type",
+							"value": "voice_conversion",
+							"type": "text",
+							"description": "Type of transformation"
+						},
+						{
+							"key": "device",
+							"value": "cpu",
+							"type": "text",
+							"description": "Processing device (cpu or cuda)"
+						},
+						{
+							"key": "normalize",
+							"value": "true",
+							"type": "text",
+							"description": "Normalize audio before processing"
+						},
+						{
+							"key": "output_format",
+							"value": "wav",
+							"type": "text",
+							"description": "Output audio format"
+						},
+						{
+							"key": "quality",
+							"value": "high",
+							"type": "text",
+							"description": "Output quality level"
+						},
+						{
+							"key": "pitch_shift",
+							"value": "0",
+							"type": "text",
+							"description": "Pitch shift in semitones (-12 to 12)"
+						},
+						{
+							"key": "speed_change",
+							"value": "1.0",
+							"type": "text",
+							"description": "Speed change multiplier (0.5 to 2.0)"
+						},
+						{
+							"key": "volume_adjustment",
+							"value": "1.0",
+							"type": "text",
+							"description": "Volume adjustment multiplier (0.1 to 3.0)"
+						},
+						{
+							"key": "noise_reduction",
+							"value": "false",
+							"type": "text",
+							"description": "Apply noise reduction"
+						},
+						{
+							"key": "echo_removal",
+							"value": "false",
+							"type": "text",
+							"description": "Remove echo"
+						},
+						{
+							"key": "voice_enhancement",
+							"value": "false",
+							"type": "text",
+							"description": "Enhance voice quality"
+						}
+					]
+				},
+				"url": {
+					"raw": "{{base_url}}/api/v1/transform-voice",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"transform-voice"
+					]
+				},
+				"description": "Transform voice using form data with audio files"
+			},
+			"response": []
+		},
+		{
+			"name": "Transform Voice (JSON)",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"input_audio\": \"base64-encoded-audio-data-here\",\n  \"reference_audio\": \"base64-encoded-audio-data-here\",\n  \"transformation_type\": \"voice_conversion\",\n  \"device\": \"cpu\",\n  \"normalize\": true,\n  \"target_sample_rate\": 22050,\n  \"output_format\": \"wav\",\n  \"quality\": \"high\",\n  \"voice_characteristics\": {\n    \"pitch_shift\": 2.0,\n    \"speed_change\": 1.1,\n    \"volume_adjustment\": 1.2\n  }\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/api/v1/transform-voice-json",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"transform-voice-json"
+					]
+				},
+				"description": "Transform voice using JSON with base64 encoded audio data"
+			},
+			"response": []
+		},
+		{
+			"name": "Transform Voice - Advanced Options",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "input_audio",
+							"type": "file",
+							"src": [],
+							"description": "Input audio file to transform"
+						},
+						{
+							"key": "reference_audio",
+							"type": "file",
+							"src": [],
+							"description": "Reference audio file for voice characteristics"
+						},
+						{
+							"key": "transformation_type",
+							"value": "accent_change",
+							"type": "text",
+							"description": "Change accent while preserving voice"
+						},
+						{
+							"key": "device",
+							"value": "cpu",
+							"type": "text"
+						},
+						{
+							"key": "normalize",
+							"value": "true",
+							"type": "text"
+						},
+						{
+							"key": "output_format",
+							"value": "mp3",
+							"type": "text",
+							"description": "Output as MP3"
+						},
+						{
+							"key": "quality",
+							"value": "high",
+							"type": "text"
+						},
+						{
+							"key": "pitch_shift",
+							"value": "3",
+							"type": "text",
+							"description": "Higher pitch"
+						},
+						{
+							"key": "speed_change",
+							"value": "1.2",
+							"type": "text",
+							"description": "Slightly faster"
+						},
+						{
+							"key": "volume_adjustment",
+							"value": "1.5",
+							"type": "text",
+							"description": "Louder volume"
+						},
+						{
+							"key": "noise_reduction",
+							"value": "true",
+							"type": "text",
+							"description": "Apply noise reduction"
+						},
+						{
+							"key": "echo_removal",
+							"value": "true",
+							"type": "text",
+							"description": "Remove echo"
+						},
+						{
+							"key": "voice_enhancement",
+							"value": "true",
+							"type": "text",
+							"description": "Enhance voice quality"
+						}
+					]
+				},
+				"url": {
+					"raw": "{{base_url}}/api/v1/transform-voice",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"transform-voice"
+					]
+				},
+				"description": "Advanced voice transformation with all enhancement options enabled"
+			},
+			"response": []
+		},
+		{
+			"name": "Get Transformation Status",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/v1/transformation-status/{{conversion_id}}",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"transformation-status",
+						"{{conversion_id}}"
+					]
+				},
+				"description": "Get the status of a voice transformation using conversion ID"
+			},
+			"response": []
+		},
+		{
+			"name": "Download Transformed Audio",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/v1/download/{{output_filename}}",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"download",
+						"{{output_filename}}"
+					]
+				},
+				"description": "Download the transformed audio file"
+			},
+			"response": []
+		},
+		{
+			"name": "Test Different Transformation Types",
+			"item": [
+				{
+					"name": "Gender Swap",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "input_audio",
+									"type": "file",
+									"src": []
+								},
+								{
+									"key": "reference_audio",
+									"type": "file",
+									"src": []
+								},
+								{
+									"key": "transformation_type",
+									"value": "gender_swap",
+									"type": "text"
+								},
+								{
+									"key": "device",
+									"value": "cpu",
+									"type": "text"
+								},
+								{
+									"key": "normalize",
+									"value": "true",
+									"type": "text"
+								},
+								{
+									"key": "output_format",
+									"value": "wav",
+									"type": "text"
+								},
+								{
+									"key": "quality",
+									"value": "high",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/transform-voice",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"transform-voice"
+							]
+						}
+					}
+				},
+				{
+					"name": "Age Change",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "input_audio",
+									"type": "file",
+									"src": []
+								},
+								{
+									"key": "reference_audio",
+									"type": "file",
+									"src": []
+								},
+								{
+									"key": "transformation_type",
+									"value": "age_change",
+									"type": "text"
+								},
+								{
+									"key": "device",
+									"value": "cpu",
+									"type": "text"
+								},
+								{
+									"key": "normalize",
+									"value": "true",
+									"type": "text"
+								},
+								{
+									"key": "output_format",
+									"value": "wav",
+									"type": "text"
+								},
+								{
+									"key": "quality",
+									"value": "high",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/transform-voice",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"transform-voice"
+							]
+						}
+					}
+				},
+				{
+					"name": "Emotion Change",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "input_audio",
+									"type": "file",
+									"src": []
+								},
+								{
+									"key": "reference_audio",
+									"type": "file",
+									"src": []
+								},
+								{
+									"key": "transformation_type",
+									"value": "emotion_change",
+									"type": "text"
+								},
+								{
+									"key": "device",
+									"value": "cpu",
+									"type": "text"
+								},
+								{
+									"key": "normalize",
+									"value": "true",
+									"type": "text"
+								},
+								{
+									"key": "output_format",
+									"value": "wav",
+									"type": "text"
+								},
+								{
+									"key": "quality",
+									"value": "high",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/transform-voice",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"transform-voice"
+							]
+						}
+					}
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Auto-generate conversion_id for status requests",
+					"if (pm.request.url.path.includes('transformation-status') && !pm.variables.get('conversion_id')) {",
+					"    pm.variables.set('conversion_id', 'test-conversion-id');",
+					"}"
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Auto-extract conversion_id and output_filename from responses",
+					"if (pm.response.code === 200) {",
+					"    try {",
+					"        const responseJson = pm.response.json();",
+					"        if (responseJson.conversion_id) {",
+					"            pm.variables.set('conversion_id', responseJson.conversion_id);",
+					"        }",
+					"        if (responseJson.output_file) {",
+					"            pm.variables.set('output_filename', responseJson.output_file);",
+					"        }",
+					"    } catch (e) {",
+					"        // Response might not be JSON",
+					"    }",
+					"}"
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8000",
+			"description": "Base URL for the API server"
+		},
+		{
+			"key": "conversion_id",
+			"value": "",
+			"description": "Auto-populated conversion ID from responses"
+		},
+		{
+			"key": "output_filename",
+			"value": "",
+			"description": "Auto-populated output filename from responses"
+		}
+	]
+}
