@@ -139,13 +139,64 @@ app = FastAPI(
 )
 
 # Add CORS middleware for Next.js frontend
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.ALLOWED_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["*"],
-)
+# For development, allow all origins with localhost/127.0.0.1/0.0.0.0
+if settings.ENVIRONMENT == "development":
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],  # Allow all origins in development
+        allow_credentials=False,  # Must be False when allow_origins=["*"]
+        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD"],
+        allow_headers=[
+            "Accept",
+            "Accept-Language",
+            "Content-Language",
+            "Content-Type",
+            "Authorization",
+            "X-Requested-With",
+            "Origin",
+            "Access-Control-Request-Method",
+            "Access-Control-Request-Headers",
+            "Cache-Control",
+            "Pragma"
+        ],
+        expose_headers=[
+            "Content-Disposition",
+            "Content-Type",
+            "Content-Length",
+            "Access-Control-Allow-Origin",
+            "Access-Control-Allow-Credentials"
+        ],
+        max_age=3600
+    )
+else:
+    # Production CORS configuration
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.ALLOWED_ORIGINS,
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD"],
+        allow_headers=[
+            "Accept",
+            "Accept-Language",
+            "Content-Language",
+            "Content-Type",
+            "Authorization",
+            "X-Requested-With",
+            "Origin",
+            "Access-Control-Request-Method",
+            "Access-Control-Request-Headers",
+            "Cache-Control",
+            "Pragma"
+        ],
+        expose_headers=[
+            "Content-Disposition",
+            "Content-Type",
+            "Content-Length",
+            "Access-Control-Allow-Origin",
+            "Access-Control-Allow-Credentials"
+        ],
+        max_age=3600
+    )
 
 # Add trusted host middleware for production
 if settings.ENVIRONMENT == "production":

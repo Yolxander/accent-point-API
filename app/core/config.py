@@ -23,6 +23,11 @@ class Settings(BaseSettings):
     ALLOWED_ORIGINS: List[str] = [
         "http://localhost:3000",  # Next.js dev server
         "http://localhost:3001",
+        "http://127.0.0.1:3000",  # Alternative localhost
+        "http://127.0.0.1:3001",
+        "http://localhost:8000",  # API server itself
+        "http://127.0.0.1:8000",
+        "http://0.0.0.0:8000",    # API server with 0.0.0.0 binding
         "https://yourdomain.com"  # Production domain
     ]
     ALLOWED_HOSTS: List[str] = ["localhost", "127.0.0.1", "yourdomain.com"]

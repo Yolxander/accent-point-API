@@ -48,6 +48,20 @@ class VoiceToVoiceFormRequest(BaseModel):
     voice_enhancement: bool = False
 
 
+@router.options("/transform-voice")
+async def options_transform_voice():
+    """Handle CORS preflight request for transform-voice endpoint"""
+    return JSONResponse(
+        content={"message": "OK"},
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "POST, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With",
+            "Access-Control-Max-Age": "3600"
+        }
+    )
+
+
 @router.post("/transform-voice", 
              response_model=VoiceToVoiceResponse,
              summary="Transform Voice (Form Data)",
@@ -365,6 +379,18 @@ async def transform_voice_json(request: VoiceToVoiceRequest):
             error_message=str(e),
             processing_time=processing_time
         )
+
+
+@router.get("/cors-test",
+            summary="CORS Test",
+            description="Test endpoint to verify CORS is working properly")
+async def cors_test():
+    """Test endpoint to verify CORS configuration"""
+    return {
+        "message": "CORS is working!",
+        "timestamp": time.time(),
+        "status": "success"
+    }
 
 
 @router.get("/transformation-types",
