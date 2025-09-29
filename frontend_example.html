@@ -225,9 +225,21 @@
                 formData.append('normalize', document.getElementById('normalize').checked);
                 formData.append('output_format', document.getElementById('outputFormat').value);
                 formData.append('quality', document.getElementById('quality').value);
-                formData.append('pitch_shift', document.getElementById('pitchShift').value);
-                formData.append('speed_change', document.getElementById('speedChange').value);
-                formData.append('volume_adjustment', document.getElementById('volumeAdjustment').value);
+                // Only append non-zero values for optional parameters
+                const pitchShift = document.getElementById('pitchShift').value;
+                if (pitchShift && parseFloat(pitchShift) !== 0) {
+                    formData.append('pitch_shift', pitchShift);
+                }
+                
+                const speedChange = document.getElementById('speedChange').value;
+                if (speedChange && parseFloat(speedChange) !== 0) {
+                    formData.append('speed_change', speedChange);
+                }
+                
+                const volumeAdjustment = document.getElementById('volumeAdjustment').value;
+                if (volumeAdjustment && parseFloat(volumeAdjustment) !== 0) {
+                    formData.append('volume_adjustment', volumeAdjustment);
+                }
                 formData.append('noise_reduction', document.getElementById('noiseReduction').checked);
                 formData.append('echo_removal', document.getElementById('echoRemoval').checked);
                 formData.append('voice_enhancement', document.getElementById('voiceEnhancement').checked);

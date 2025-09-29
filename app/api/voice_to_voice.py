@@ -120,6 +120,17 @@ async def transform_voice(
             raise FileValidationError(f"Reference file too large. Maximum size: {settings.MAX_FILE_SIZE} bytes")
         
         # Validate transformation parameters
+        # Convert 0 values to None to skip processing
+        if pitch_shift == 0:
+            pitch_shift = None
+        if speed_change == 0:
+            speed_change = None
+        if volume_adjustment == 0:
+            volume_adjustment = None
+        
+        # Debug logging
+        print(f"Debug - pitch_shift: {pitch_shift}, speed_change: {speed_change}, volume_adjustment: {volume_adjustment}")
+        
         if pitch_shift is not None and not (-12.0 <= pitch_shift <= 12.0):
             raise FileValidationError("Pitch shift must be between -12.0 and 12.0 semitones")
         

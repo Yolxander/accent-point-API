@@ -102,6 +102,12 @@ class VoiceConverter:
             import openvoice_cli.__main__ as openvoice_main
             tune_one = openvoice_main.tune_one
             
+            logger.info(f"Running OpenVoice conversion with:")
+            logger.info(f"  Input: {input_file}")
+            logger.info(f"  Reference: {reference_file}")
+            logger.info(f"  Output: {output_file}")
+            logger.info(f"  Device: {device}")
+            
             # Run the conversion
             tune_one(
                 input_file=input_file,
@@ -110,9 +116,22 @@ class VoiceConverter:
                 device=device
             )
             
+            logger.info("OpenVoice conversion completed successfully")
+            
+        except ImportError as e:
+            error_msg = f"OpenVoice CLI import failed: {str(e)}"
+            logger.error(error_msg)
+            raise ConversionError(error_msg)
+        except FileNotFoundError as e:
+            error_msg = f"Required file not found: {str(e)}"
+            logger.error(error_msg)
+            raise ConversionError(error_msg)
         except Exception as e:
-            logger.error(f"OpenVoice conversion error: {str(e)}")
-            raise ConversionError(f"OpenVoice conversion error: {str(e)}")
+            error_msg = f"OpenVoice conversion error: {str(e)}"
+            logger.error(error_msg)
+            logger.error(f"Exception type: {type(e).__name__}")
+            logger.error(f"Exception args: {e.args}")
+            raise ConversionError(error_msg)
     
     async def get_conversion_info(self, input_file: str, reference_file: str) -> dict:
         """
