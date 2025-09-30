@@ -4,6 +4,7 @@ Health check endpoints
 
 from fastapi import APIRouter, Depends
 from app.core.config import settings
+from app.services.database_service import db_service
 import psutil
 import os
 
@@ -43,8 +44,18 @@ async def detailed_health_check():
     except ImportError:
         openvoice_available = False
     
+    # Check Supabase connectivity
+    try:
+        supabase_connected = await db_service.test_connection()
+    except Exception:
+        supabase_connected = False
+    
+    # Overall health status
+    all_checks_passed = all(dirs_status.values()) and openvoice_available and supabase_connected
+    status = "healthy" if all_checks_passed else "degraded"
+    
     return {
-        "status": "healthy" if all(dirs_status.values()) and openvoice_available else "degraded",
+        "status": status,
         "service": "OpenVoice API",
         "version": "1.0.0",
         "environment": settings.ENVIRONMENT,
@@ -55,5 +66,6 @@ async def detailed_health_check():
             "disk_free_gb": round(disk.free / (1024**3), 2)
         },
         "directories": dirs_status,
-        "openvoice_available": openvoice_available
+        "openvoice_available": openvoice_available,
+        "supabase_connected": supabase_connected
     }

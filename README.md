@@ -68,6 +68,10 @@ cp env.example .env
 
 4. **Run the application**:
 ```bash
+# Using uvicorn (recommended for development)
+./venv/bin/python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+# Or using the main.py file
 python main.py
 ```
 

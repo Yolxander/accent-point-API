@@ -8,6 +8,7 @@ import tempfile
 import uuid
 import base64
 import time
+from datetime import datetime
 from typing import Optional, Dict, Any
 from fastapi import APIRouter, File, UploadFile, HTTPException, Form, BackgroundTasks
 from fastapi.responses import FileResponse, JSONResponse
@@ -18,6 +19,7 @@ from app.core.config import settings
 from app.core.exceptions import AudioProcessingError, FileValidationError, ConversionError
 from app.services.audio_processor import AudioProcessor
 from app.services.voice_converter import VoiceConverter
+from app.services.database_service import db_service
 from app.models.conversion import (
     VoiceToVoiceRequest, 
     VoiceToVoiceResponse, 
@@ -103,6 +105,29 @@ async def transform_voice(
     
     start_time = time.time()
     conversion_id = str(uuid.uuid4())
+    
+    # Create database record for tracking
+    try:
+        db_record = await db_service.create_voice_conversion(
+            user_id=None,  # Will be set when user authentication is implemented
+            session_id=conversion_id,
+            transformation_type=transformation_type,
+            source_audio_filename=input_audio.filename,
+            source_audio_size=input_audio.size,
+            reference_audio_filename=reference_audio.filename,
+            reference_audio_size=reference_audio.size,
+            pitch_shift=int(pitch_shift) if pitch_shift is not None else 0,
+            speed_multiplier=speed_change if speed_change is not None else 1.0,
+            volume_multiplier=volume_adjustment if volume_adjustment is not None else 1.0,
+            noise_reduction=noise_reduction,
+            echo_removal=echo_removal,
+            voice_enhancement=voice_enhancement,
+            output_format=output_format,
+            quality=quality
+        )
+    except Exception as e:
+        print(f"Warning: Failed to create database record: {e}")
+        db_record = None
     
     try:
         # Validate file types
@@ -217,6 +242,32 @@ async def transform_voice(
         
         processing_time = time.time() - start_time
         
+        # Update database record with completion details
+        if db_record:
+            try:
+                await db_service.update_voice_conversion(
+                    conversion_id,
+                    status="completed",
+                    output_filename=output_filename,
+                    output_file_size=file_size,
+                    output_duration=output_duration,
+                    processing_time_seconds=processing_time,
+                    completed_at=datetime.now().isoformat()
+                )
+            except Exception as e:
+                print(f"Warning: Failed to update database record: {e}")
+        
+        # Update API usage statistics
+        try:
+            await db_service.update_api_usage_stats(
+                user_id=None,
+                endpoint="transform_voice",
+                processing_time=processing_time,
+                file_size=file_size
+            )
+        except Exception as e:
+            print(f"Warning: Failed to update usage stats: {e}")
+        
         return VoiceToVoiceResponse(
             conversion_id=conversion_id,
             status=ConversionStatus.COMPLETED,
@@ -242,6 +293,18 @@ async def transform_voice(
             pass
         
         processing_time = time.time() - start_time
+        
+        # Update database record with failure details
+        if db_record:
+            try:
+                await db_service.update_voice_conversion(
+                    conversion_id,
+                    status="failed",
+                    error_message=str(e),
+                    processing_time_seconds=processing_time
+                )
+            except Exception as db_error:
+                print(f"Warning: Failed to update database record: {db_error}")
         
         return VoiceToVoiceResponse(
             conversion_id=conversion_id,
@@ -448,13 +511,32 @@ async def get_transformation_types():
 async def get_transformation_status(conversion_id: str):
     """Get status of a voice transformation"""
     
-    # This would typically check a database or cache
-    # For now, we'll return a simple status
-    return {
-        "conversion_id": conversion_id,
-        "status": "completed",
-        "message": "Transformation completed"
-    }
+    try:
+        # Get conversion record from database
+        conversion = await db_service.get_voice_conversion(conversion_id)
+        
+        if not conversion:
+            raise HTTPException(status_code=404, detail="Conversion not found")
+        
+        return {
+            "conversion_id": conversion_id,
+            "status": conversion.get("status", "unknown"),
+            "transformation_type": conversion.get("transformation_type", "voice_conversion"),
+            "created_at": conversion.get("created_at"),
+            "updated_at": conversion.get("updated_at"),
+            "completed_at": conversion.get("completed_at"),
+            "processing_time_seconds": conversion.get("processing_time_seconds"),
+            "output_filename": conversion.get("output_filename"),
+            "output_file_size": conversion.get("output_file_size"),
+            "output_duration": conversion.get("output_duration"),
+            "error_message": conversion.get("error_message"),
+            "message": f"Transformation {conversion.get('status', 'unknown')}"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error retrieving conversion status: {str(e)}")
 
 
 @router.get("/download/{filename}",

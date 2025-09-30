@@ -63,6 +63,11 @@ class Settings(BaseSettings):
     # WebSocket
     WS_HEARTBEAT_INTERVAL: int = 30
     
+    # Supabase
+    SUPABASE_URL: str = "http://127.0.0.1:54321"
+    SUPABASE_ANON_KEY: str = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0"
+    SUPABASE_SERVICE_ROLE_KEY: str = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU"
+    
     @validator("ALLOWED_ORIGINS", pre=True)
     def parse_origins(cls, v):
         if isinstance(v, str):

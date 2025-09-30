@@ -38,3 +38,8 @@ def setup_logging():
     logging.getLogger("openvoice_cli").setLevel(logging.WARNING)
     
     return root_logger
+
+
+def get_logger(name: str) -> logging.Logger:
+    """Get a logger instance for the given name"""
+    return logging.getLogger(name)
