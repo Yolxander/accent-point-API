@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Voice Conversion with Play Button</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="file"] {
+            width: 100%;
+            padding: 10px;
+            border: 2px dashed #ddd;
+            border-radius: 5px;
+            background: #f9f9f9;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        #result {
+            margin-top: 20px;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 5px;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎤 Simple Voice Conversion</h1>
+        <p style="text-align: center; color: #666;">
+            Upload audio files and get a play button for the converted result!
+        </p>
+        
+        <form id="conversionForm">
+            <div class="form-group">
+                <label for="inputAudio">Input Audio:</label>
+                <input type="file" id="inputAudio" accept="audio/*" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="referenceAudio">Reference Audio:</label>
+                <input type="file" id="referenceAudio" accept="audio/*" required>
+            </div>
+            
+            <button type="submit" id="convertBtn">🚀 Convert Voice</button>
+        </form>
+        
+        <div id="result"></div>
+    </div>
+
+    <!-- Include the voice conversion player script -->
+    <script src="voice_conversion_play_integration.js"></script>
+    
+    <script>
+        document.getElementById('conversionForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const inputAudio = document.getElementById('inputAudio').files[0];
+            const referenceAudio = document.getElementById('referenceAudio').files[0];
+            const convertBtn = document.getElementById('convertBtn');
+            const resultDiv = document.getElementById('result');
+            
+            if (!inputAudio || !referenceAudio) {
+                resultDiv.innerHTML = '<div class="error">Please select both audio files.</div>';
+                return;
+            }
+            
+            // Disable button and show loading
+            convertBtn.disabled = true;
+            convertBtn.textContent = '🔄 Converting...';
+            resultDiv.innerHTML = '';
+            
+            try {
+                // Use the VoiceConversionPlayer to convert and get playable audio
+                const result = await VoiceConversionPlayer.convertVoice(inputAudio, referenceAudio, {
+                    device: 'cpu',
+                    normalize: true
+                });
+                
+                if (result.success) {
+                    // Display the result with play button
+                    resultDiv.innerHTML = `
+                        <h3>✅ Conversion Complete!</h3>
+                        <p><strong>Conversion ID:</strong> ${result.conversionId}</p>
+                        <p><strong>File Size:</strong> ${(result.metadata.fileSize / 1024).toFixed(1)} KB</p>
+                        ${result.metadata.duration ? `<p><strong>Duration:</strong> ${result.metadata.duration.toFixed(2)}s</p>` : ''}
+                        <p><strong>Processing Time:</strong> ${result.metadata.processingTime.toFixed(2)}s</p>
+                    `;
+                    
+                    // Add the audio player with play button
+                    resultDiv.appendChild(result.audioElement);
+                    
+                } else {
+                    resultDiv.innerHTML = `<div class="error">❌ Error: ${result.error}</div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+            } finally {
+                // Re-enable button
+                convertBtn.disabled = false;
+                convertBtn.textContent = '🚀 Convert Voice';
+            }
+        });
+    </script>
+</body>
+</html>

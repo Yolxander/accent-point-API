@@ -216,35 +216,52 @@ async def transform_voice(
             audio_processor.save_audio(temp_ref.name, reference_data, target_sr)
             temp_ref_path = temp_ref.name
         
-        # Create output file path
+        # Create temporary output file path
         output_filename = f"transformed_{conversion_id}.{output_format}"
-        output_path = os.path.join(settings.OUTPUT_DIR, output_filename)
+        temp_output_path = os.path.join(settings.TEMP_DIR, output_filename)
         
         # Perform voice transformation
         await voice_converter.convert_voice(
             input_file=temp_input_path,
             reference_file=temp_ref_path,
-            output_file=output_path,
+            output_file=temp_output_path,
             device=device
         )
         
-        # Clean up temporary files
+        # Clean up temporary input files
         os.unlink(temp_input_path)
         os.unlink(temp_ref_path)
         
         # Verify output file exists
-        if not os.path.exists(output_path):
+        if not os.path.exists(temp_output_path):
             raise ConversionError("Voice transformation failed - no output file generated")
         
+        # Read the generated audio file
+        with open(temp_output_path, 'rb') as f:
+            audio_data = f.read()
+        
         # Get output file info
-        file_size = os.path.getsize(output_path)
+        file_size = len(audio_data)
         output_duration = len(input_data) / target_sr  # Approximate duration
         
         processing_time = time.time() - start_time
         
-        # Update database record with completion details
+        # Save audio data to database
         if db_record:
             try:
+                await db_service.save_audio_to_conversion(
+                    conversion_id,
+                    audio_data,
+                    output_filename,
+                    file_size,
+                    output_duration
+                )
+            except Exception as e:
+                print(f"Warning: Failed to save audio to database: {e}")
+                # Fallback to file system storage
+                output_path = os.path.join(settings.OUTPUT_DIR, output_filename)
+                with open(output_path, 'wb') as f:
+                    f.write(audio_data)
                 await db_service.update_voice_conversion(
                     conversion_id,
                     status="completed",
@@ -254,8 +271,9 @@ async def transform_voice(
                     processing_time_seconds=processing_time,
                     completed_at=datetime.now().isoformat()
                 )
-            except Exception as e:
-                print(f"Warning: Failed to update database record: {e}")
+        
+        # Clean up temporary output file
+        os.unlink(temp_output_path)
         
         # Update API usage statistics
         try:
@@ -277,7 +295,7 @@ async def transform_voice(
             output_duration=output_duration,
             output_file=output_filename,
             file_size=file_size,
-            download_url=f"/api/v1/download/{output_filename}",
+            download_url=f"/api/v1/play/{conversion_id}",
             processing_time=processing_time,
             completed_at=time.time()
         )
@@ -393,31 +411,38 @@ async def transform_voice_json(request: VoiceToVoiceRequest):
             audio_processor.save_audio(temp_ref.name, reference_data, target_sr)
             temp_ref_path = temp_ref.name
         
-        # Create output file path
+        # Create temporary output file path
         output_filename = f"transformed_{conversion_id}.{request.output_format}"
-        output_path = os.path.join(settings.OUTPUT_DIR, output_filename)
+        temp_output_path = os.path.join(settings.TEMP_DIR, output_filename)
         
         # Perform voice transformation
         await voice_converter.convert_voice(
             input_file=temp_input_path,
             reference_file=temp_ref_path,
-            output_file=output_path,
+            output_file=temp_output_path,
             device=request.device
         )
         
-        # Clean up temporary files
+        # Clean up temporary input files
         os.unlink(temp_input_path)
         os.unlink(temp_ref_path)
         
         # Verify output file exists
-        if not os.path.exists(output_path):
+        if not os.path.exists(temp_output_path):
             raise ConversionError("Voice transformation failed - no output file generated")
         
+        # Read the generated audio file
+        with open(temp_output_path, 'rb') as f:
+            audio_data = f.read()
+        
         # Get output file info
-        file_size = os.path.getsize(output_path)
+        file_size = len(audio_data)
         output_duration = len(input_data) / target_sr
         
         processing_time = time.time() - start_time
+        
+        # Clean up temporary output file
+        os.unlink(temp_output_path)
         
         return VoiceToVoiceResponse(
             conversion_id=conversion_id,
@@ -428,7 +453,7 @@ async def transform_voice_json(request: VoiceToVoiceRequest):
             output_duration=output_duration,
             output_file=output_filename,
             file_size=file_size,
-            download_url=f"/api/v1/download/{output_filename}",
+            download_url=f"/api/v1/play/{conversion_id}",
             processing_time=processing_time,
             completed_at=time.time()
         )
@@ -539,11 +564,60 @@ async def get_transformation_status(conversion_id: str):
         raise HTTPException(status_code=500, detail=f"Error retrieving conversion status: {str(e)}")
 
 
+@router.get("/play/{conversion_id}",
+            summary="Play Transformed Audio",
+            description="Stream the transformed audio file from database by conversion ID")
+async def play_transformed_audio(conversion_id: str):
+    """Play transformed audio file from database"""
+    
+    try:
+        # Get audio data from database
+        audio_data = await db_service.get_audio_from_conversion(conversion_id)
+        
+        if not audio_data:
+            raise HTTPException(status_code=404, detail="Audio not found")
+        
+        # Get conversion record for metadata
+        conversion = await db_service.get_voice_conversion(conversion_id)
+        if not conversion:
+            raise HTTPException(status_code=404, detail="Conversion not found")
+        
+        filename = conversion.get("output_filename", f"audio_{conversion_id}.wav")
+        output_format = conversion.get("output_format", "wav")
+        
+        # Determine media type based on output format
+        media_type_map = {
+            'wav': 'audio/wav',
+            'mp3': 'audio/mpeg',
+            'flac': 'audio/flac',
+            'm4a': 'audio/mp4',
+            'ogg': 'audio/ogg'
+        }
+        
+        media_type = media_type_map.get(output_format.lower(), 'audio/wav')
+        
+        # Return audio data as streaming response
+        from fastapi.responses import Response
+        return Response(
+            content=audio_data,
+            media_type=media_type,
+            headers={
+                "Content-Disposition": f"inline; filename={filename}",
+                "Accept-Ranges": "bytes"
+            }
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error retrieving audio: {str(e)}")
+
+
 @router.get("/download/{filename}",
-            summary="Download Transformed Audio",
-            description="Download the transformed audio file by filename")
+            summary="Download Transformed Audio (Legacy)",
+            description="Download the transformed audio file by filename (legacy endpoint for file system storage)")
 async def download_transformed_audio(filename: str):
-    """Download transformed audio file"""
+    """Download transformed audio file from file system (legacy)"""
     
     # Validate filename
     allowed_extensions = ['.wav', '.mp3', '.flac', '.m4a', '.ogg']

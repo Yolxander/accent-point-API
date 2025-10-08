@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS voice_conversions (
     output_duration FLOAT,
     output_format TEXT DEFAULT 'wav' CHECK (output_format IN ('wav', 'mp3', 'flac')),
     quality TEXT DEFAULT 'medium' CHECK (quality IN ('low', 'medium', 'high')),
+    output_audio_data BYTEA,  -- Store audio file as binary data
     
     -- Processing metadata
     processing_time_seconds FLOAT,
@@ -79,6 +80,7 @@ CREATE TABLE IF NOT EXISTS text_to_speech_conversions (
     output_duration FLOAT,
     output_format TEXT DEFAULT 'wav' CHECK (output_format IN ('wav', 'mp3', 'flac')),
     quality TEXT DEFAULT 'medium' CHECK (quality IN ('low', 'medium', 'high')),
+    output_audio_data BYTEA,  -- Store audio file as binary data
     
     -- Processing metadata
     processing_time_seconds FLOAT,
@@ -151,6 +153,7 @@ CREATE TABLE IF NOT EXISTS batch_processing_files (
     output_filename TEXT,
     output_file_size BIGINT,
     output_duration FLOAT,
+    output_audio_data BYTEA,  -- Store audio file as binary data
     
     -- Processing metadata
     processing_time_seconds FLOAT,

@@ -114,28 +114,36 @@ async def convert_text_to_speech(
             audio_processor.save_audio(temp_ref.name, reference_data, target_sr)
             temp_ref_path = temp_ref.name
         
-        # Step 5: Create output file path
+        # Step 5: Create temporary output file path
         output_filename = f"tts_converted_{conversion_id}.wav"
-        output_path = os.path.join(settings.OUTPUT_DIR, output_filename)
+        temp_output_path = os.path.join(settings.TEMP_DIR, output_filename)
         
         # Step 6: Apply voice characteristics using OpenVoice
         await voice_converter.convert_voice(
             input_file=temp_tts_path,
             reference_file=temp_ref_path,
-            output_file=output_path,
+            output_file=temp_output_path,
             device=device
         )
         
-        # Clean up temporary files
+        # Clean up temporary input files
         os.unlink(temp_tts_path)
         os.unlink(temp_ref_path)
         
         # Verify output file exists
-        if not os.path.exists(output_path):
+        if not os.path.exists(temp_output_path):
             raise ConversionError("Text-to-speech conversion failed - no output file generated")
         
+        # Read the generated audio file
+        with open(temp_output_path, 'rb') as f:
+            audio_data = f.read()
+        
         # Get file size
-        file_size = os.path.getsize(output_path)
+        file_size = len(audio_data)
+        output_duration = len(tts_audio_data) / target_sr
+        
+        # Clean up temporary output file
+        os.unlink(temp_output_path)
         
         return ConversionResponse(
             conversion_id=conversion_id,
@@ -143,7 +151,7 @@ async def convert_text_to_speech(
             message="Text-to-speech conversion completed successfully",
             output_file=output_filename,
             file_size=file_size,
-            download_url=f"/api/v1/download/{output_filename}"
+            download_url=f"/api/v1/play-tts/{conversion_id}"
         )
         
     except Exception as e:
@@ -186,18 +194,75 @@ async def preview_tts(
         # Create temporary file for preview
         conversion_id = str(uuid.uuid4())
         output_filename = f"tts_preview_{conversion_id}.wav"
-        output_path = os.path.join(settings.OUTPUT_DIR, output_filename)
+        temp_output_path = os.path.join(settings.TEMP_DIR, output_filename)
         
         # Save preview audio
-        audio_processor.save_audio(output_path, tts_audio_data, tts_sample_rate)
+        audio_processor.save_audio(temp_output_path, tts_audio_data, tts_sample_rate)
+        
+        # Read the generated audio file
+        with open(temp_output_path, 'rb') as f:
+            audio_data = f.read()
+        
+        # Clean up temporary file
+        os.unlink(temp_output_path)
         
         return {
             "conversion_id": conversion_id,
             "status": "completed",
             "message": "TTS preview generated successfully",
             "output_file": output_filename,
-            "download_url": f"/api/v1/download/{output_filename}"
+            "download_url": f"/api/v1/play-tts/{conversion_id}",
+            "audio_data": audio_data  # Include audio data for immediate playback
         }
         
     except Exception as e:
         raise ConversionError(f"TTS preview generation failed: {str(e)}")
+
+
+@router.get("/play-tts/{conversion_id}",
+            summary="Play TTS Audio",
+            description="Stream the text-to-speech audio file from database by conversion ID")
+async def play_tts_audio(conversion_id: str):
+    """Play text-to-speech audio file from database"""
+    
+    try:
+        # Get audio data from database
+        audio_data = await db_service.get_audio_from_tts_conversion(conversion_id)
+        
+        if not audio_data:
+            raise HTTPException(status_code=404, detail="TTS audio not found")
+        
+        # Get conversion record for metadata
+        conversion = await db_service.get_text_to_speech_conversion(conversion_id)
+        if not conversion:
+            raise HTTPException(status_code=404, detail="TTS conversion not found")
+        
+        filename = conversion.get("output_filename", f"tts_{conversion_id}.wav")
+        output_format = conversion.get("output_format", "wav")
+        
+        # Determine media type based on output format
+        media_type_map = {
+            'wav': 'audio/wav',
+            'mp3': 'audio/mpeg',
+            'flac': 'audio/flac',
+            'm4a': 'audio/mp4',
+            'ogg': 'audio/ogg'
+        }
+        
+        media_type = media_type_map.get(output_format.lower(), 'audio/wav')
+        
+        # Return audio data as streaming response
+        from fastapi.responses import Response
+        return Response(
+            content=audio_data,
+            media_type=media_type,
+            headers={
+                "Content-Disposition": f"inline; filename={filename}",
+                "Accept-Ranges": "bytes"
+            }
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error retrieving TTS audio: {str(e)}")

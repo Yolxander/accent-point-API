@@ -78,6 +78,49 @@ class DatabaseService:
             logger.error(f"Error updating voice conversion {conversion_id}: {e}")
             raise
     
+    async def save_audio_to_conversion(
+        self,
+        conversion_id: str,
+        audio_data: bytes,
+        filename: str,
+        file_size: int,
+        duration: float
+    ) -> Dict[str, Any]:
+        """Save audio data to a voice conversion record"""
+        try:
+            updates = {
+                "output_audio_data": audio_data,
+                "output_filename": filename,
+                "output_file_size": file_size,
+                "output_duration": duration,
+                "status": "completed"
+            }
+            
+            result = self.client.table("voice_conversions").update(updates).eq("id", conversion_id).execute()
+            
+            if result.data:
+                logger.info(f"Saved audio data to voice conversion record: {conversion_id}")
+                return result.data[0]
+            else:
+                raise Exception("Voice conversion record not found")
+                
+        except Exception as e:
+            logger.error(f"Error saving audio to voice conversion {conversion_id}: {e}")
+            raise
+    
+    async def get_audio_from_conversion(self, conversion_id: str) -> Optional[bytes]:
+        """Get audio data from a voice conversion record"""
+        try:
+            result = self.client.table("voice_conversions").select("output_audio_data").eq("id", conversion_id).execute()
+            
+            if result.data and result.data[0].get("output_audio_data"):
+                return result.data[0]["output_audio_data"]
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error getting audio from voice conversion {conversion_id}: {e}")
+            return None
+    
     async def get_voice_conversion(self, conversion_id: str) -> Optional[Dict[str, Any]]:
         """Get a voice conversion record by ID"""
         try:
@@ -157,6 +200,62 @@ class DatabaseService:
         except Exception as e:
             logger.error(f"Error updating TTS conversion {conversion_id}: {e}")
             raise
+    
+    async def save_audio_to_tts_conversion(
+        self,
+        conversion_id: str,
+        audio_data: bytes,
+        filename: str,
+        file_size: int,
+        duration: float
+    ) -> Dict[str, Any]:
+        """Save audio data to a text-to-speech conversion record"""
+        try:
+            updates = {
+                "output_audio_data": audio_data,
+                "output_filename": filename,
+                "output_file_size": file_size,
+                "output_duration": duration,
+                "status": "completed"
+            }
+            
+            result = self.client.table("text_to_speech_conversions").update(updates).eq("id", conversion_id).execute()
+            
+            if result.data:
+                logger.info(f"Saved audio data to TTS conversion record: {conversion_id}")
+                return result.data[0]
+            else:
+                raise Exception("TTS conversion record not found")
+                
+        except Exception as e:
+            logger.error(f"Error saving audio to TTS conversion {conversion_id}: {e}")
+            raise
+    
+    async def get_audio_from_tts_conversion(self, conversion_id: str) -> Optional[bytes]:
+        """Get audio data from a text-to-speech conversion record"""
+        try:
+            result = self.client.table("text_to_speech_conversions").select("output_audio_data").eq("id", conversion_id).execute()
+            
+            if result.data and result.data[0].get("output_audio_data"):
+                return result.data[0]["output_audio_data"]
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error getting audio from TTS conversion {conversion_id}: {e}")
+            return None
+    
+    async def get_text_to_speech_conversion(self, conversion_id: str) -> Optional[Dict[str, Any]]:
+        """Get a text-to-speech conversion record by ID"""
+        try:
+            result = self.client.table("text_to_speech_conversions").select("*").eq("id", conversion_id).execute()
+            
+            if result.data:
+                return result.data[0]
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error getting TTS conversion {conversion_id}: {e}")
+            return None
     
     async def create_batch_processing_job(
         self,
@@ -253,6 +352,49 @@ class DatabaseService:
         except Exception as e:
             logger.error(f"Error updating batch file {file_id}: {e}")
             raise
+    
+    async def save_audio_to_batch_file(
+        self,
+        file_id: str,
+        audio_data: bytes,
+        filename: str,
+        file_size: int,
+        duration: float
+    ) -> Dict[str, Any]:
+        """Save audio data to a batch processing file record"""
+        try:
+            updates = {
+                "output_audio_data": audio_data,
+                "output_filename": filename,
+                "output_file_size": file_size,
+                "output_duration": duration,
+                "status": "completed"
+            }
+            
+            result = self.client.table("batch_processing_files").update(updates).eq("id", file_id).execute()
+            
+            if result.data:
+                logger.info(f"Saved audio data to batch file record: {file_id}")
+                return result.data[0]
+            else:
+                raise Exception("Batch file record not found")
+                
+        except Exception as e:
+            logger.error(f"Error saving audio to batch file {file_id}: {e}")
+            raise
+    
+    async def get_audio_from_batch_file(self, file_id: str) -> Optional[bytes]:
+        """Get audio data from a batch processing file record"""
+        try:
+            result = self.client.table("batch_processing_files").select("output_audio_data").eq("id", file_id).execute()
+            
+            if result.data and result.data[0].get("output_audio_data"):
+                return result.data[0]["output_audio_data"]
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error getting audio from batch file {file_id}: {e}")
+            return None
     
     async def get_batch_processing_job(self, job_id: str) -> Optional[Dict[str, Any]]:
         """Get a batch processing job by ID"""

@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice Conversion Demo - Database Storage</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+        }
+        .section h2 {
+            color: #555;
+            margin-top: 0;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .audio-player {
+            margin-top: 15px;
+            padding: 15px;
+            background-color: #e9ecef;
+            border-radius: 5px;
+        }
+        .status {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .status.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .status.info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 2s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .info-box {
+            background-color: #e7f3ff;
+            border: 1px solid #b3d9ff;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .info-box h3 {
+            margin-top: 0;
+            color: #0066cc;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎤 Voice Conversion Demo - Database Storage</h1>
+        
+        <div class="info-box">
+            <h3>✨ New Feature: Database Audio Storage</h3>
+            <p>Audio files are now stored in Supabase database and can be played directly in the browser without downloading!</p>
+            <p><strong>How it works:</strong></p>
+            <ul>
+                <li>Upload your audio files for voice conversion</li>
+                <li>Audio is processed and stored in the database</li>
+                <li>Play the result directly using the HTML audio player</li>
+                <li>No downloads required - instant playback!</li>
+            </ul>
+        </div>
+
+        <!-- Voice Conversion Form -->
+        <div class="section">
+            <h2>🎤 Voice Conversion</h2>
+            <form id="voiceConversionForm">
+                <div class="form-group">
+                    <label for="inputAudio">Input Audio File:</label>
+                    <input type="file" id="inputAudio" accept="audio/*" required>
+                    <small>Upload the audio file you want to convert</small>
+                </div>
+                <div class="form-group">
+                    <label for="referenceAudio">Reference Audio File:</label>
+                    <input type="file" id="referenceAudio" accept="audio/*" required>
+                    <small>Upload the reference audio with the target voice characteristics</small>
+                </div>
+                <div class="form-group">
+                    <label for="device">Processing Device:</label>
+                    <select id="device">
+                        <option value="cpu">CPU</option>
+                        <option value="cuda">CUDA (GPU)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="normalize" checked> Normalize Audio
+                    </label>
+                    <small>Normalize audio levels before processing</small>
+                </div>
+                <div class="form-group">
+                    <label for="targetSampleRate">Target Sample Rate:</label>
+                    <select id="targetSampleRate">
+                        <option value="">Default (22050 Hz)</option>
+                        <option value="16000">16000 Hz</option>
+                        <option value="22050">22050 Hz</option>
+                        <option value="44100">44100 Hz</option>
+                        <option value="48000">48000 Hz</option>
+                    </select>
+                </div>
+                <button type="submit">Convert Voice</button>
+            </form>
+            
+            <div class="loading" id="conversionLoading">
+                <div class="spinner"></div>
+                <p>Processing voice conversion...</p>
+            </div>
+            
+            <div id="conversionResult"></div>
+        </div>
+
+        <!-- Conversion Status Check -->
+        <div class="section">
+            <h2>📊 Check Conversion Status</h2>
+            <form id="statusForm">
+                <div class="form-group">
+                    <label for="conversionId">Conversion ID:</label>
+                    <input type="text" id="conversionId" placeholder="Enter conversion ID to check status" required>
+                </div>
+                <button type="submit">Check Status</button>
+            </form>
+            
+            <div class="loading" id="statusLoading">
+                <div class="spinner"></div>
+                <p>Checking conversion status...</p>
+            </div>
+            
+            <div id="statusResult"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000/api/v1';
+        
+        // Voice Conversion Form
+        document.getElementById('voiceConversionForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData();
+            formData.append('input_audio', document.getElementById('inputAudio').files[0]);
+            formData.append('reference_audio', document.getElementById('referenceAudio').files[0]);
+            formData.append('device', document.getElementById('device').value);
+            formData.append('normalize', document.getElementById('normalize').checked);
+            
+            const targetSampleRate = document.getElementById('targetSampleRate').value;
+            if (targetSampleRate) {
+                formData.append('target_sample_rate', targetSampleRate);
+            }
+            
+            showLoading('conversionLoading');
+            hideResult('conversionResult');
+            
+            try {
+                const response = await fetch(`${API_BASE}/convert-voice`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                hideLoading('conversionLoading');
+                
+                if (result.status === 'completed') {
+                    showResult('conversionResult', `
+                        <div class="status success">
+                            <h3>✅ Voice Conversion Completed!</h3>
+                            <p><strong>Conversion ID:</strong> ${result.conversion_id}</p>
+                            <p><strong>Output File:</strong> ${result.output_file}</p>
+                            <p><strong>File Size:</strong> ${(result.file_size / 1024).toFixed(1)} KB</p>
+                        </div>
+                        <div class="audio-player">
+                            <h4>🎵 Play Converted Audio (from database):</h4>
+                            <audio controls style="width: 100%;">
+                                <source src="${API_BASE}/play-voice/${result.conversion_id}" type="audio/wav">
+                                Your browser does not support the audio element.
+                            </audio>
+                            <p><small>✨ This audio is streamed directly from the Supabase database!</small></p>
+                            <p><strong>Direct URL:</strong> <code>${API_BASE}/play-voice/${result.conversion_id}</code></p>
+                        </div>
+                    `, 'success');
+                    
+                    // Auto-fill the conversion ID for status checking
+                    document.getElementById('conversionId').value = result.conversion_id;
+                } else {
+                    showResult('conversionResult', `
+                        <div class="status error">
+                            <h3>❌ Voice Conversion Failed</h3>
+                            <p>${result.message}</p>
+                        </div>
+                    `, 'error');
+                }
+            } catch (error) {
+                hideLoading('conversionLoading');
+                showResult('conversionResult', `
+                    <div class="status error">
+                        <h3>❌ Error</h3>
+                        <p>${error.message}</p>
+                    </div>
+                `, 'error');
+            }
+        });
+
+        // Status Check Form
+        document.getElementById('statusForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const conversionId = document.getElementById('conversionId').value.trim();
+            
+            if (!conversionId) {
+                showResult('statusResult', `
+                    <div class="status error">
+                        <h3>❌ Error</h3>
+                        <p>Please enter a conversion ID</p>
+                    </div>
+                `, 'error');
+                return;
+            }
+            
+            showLoading('statusLoading');
+            hideResult('statusResult');
+            
+            try {
+                const response = await fetch(`${API_BASE}/conversion-status/${conversionId}`);
+                const result = await response.json();
+                hideLoading('statusLoading');
+                
+                if (response.ok) {
+                    const statusClass = result.status === 'completed' ? 'success' : 
+                                      result.status === 'failed' ? 'error' : 'info';
+                    
+                    showResult('statusResult', `
+                        <div class="status ${statusClass}">
+                            <h3>📊 Conversion Status: ${result.status.toUpperCase()}</h3>
+                            <p><strong>Conversion ID:</strong> ${result.conversion_id}</p>
+                            <p><strong>Type:</strong> ${result.transformation_type}</p>
+                            <p><strong>Created:</strong> ${new Date(result.created_at).toLocaleString()}</p>
+                            ${result.completed_at ? `<p><strong>Completed:</strong> ${new Date(result.completed_at).toLocaleString()}</p>` : ''}
+                            ${result.processing_time_seconds ? `<p><strong>Processing Time:</strong> ${result.processing_time_seconds.toFixed(2)}s</p>` : ''}
+                            ${result.output_file_size ? `<p><strong>File Size:</strong> ${(result.output_file_size / 1024).toFixed(1)} KB</p>` : ''}
+                            ${result.output_duration ? `<p><strong>Duration:</strong> ${result.output_duration.toFixed(2)}s</p>` : ''}
+                            ${result.error_message ? `<p><strong>Error:</strong> ${result.error_message}</p>` : ''}
+                        </div>
+                        ${result.status === 'completed' ? `
+                            <div class="audio-player">
+                                <h4>🎵 Play Audio (from database):</h4>
+                                <audio controls style="width: 100%;">
+                                    <source src="${API_BASE}/play-voice/${result.conversion_id}" type="audio/wav">
+                                    Your browser does not support the audio element.
+                                </audio>
+                                <p><small>✨ This audio is streamed directly from the Supabase database!</small></p>
+                            </div>
+                        ` : ''}
+                    `, statusClass);
+                } else {
+                    showResult('statusResult', `
+                        <div class="status error">
+                            <h3>❌ Error</h3>
+                            <p>${result.detail || 'Failed to get conversion status'}</p>
+                        </div>
+                    `, 'error');
+                }
+            } catch (error) {
+                hideLoading('statusLoading');
+                showResult('statusResult', `
+                    <div class="status error">
+                        <h3>❌ Error</h3>
+                        <p>${error.message}</p>
+                    </div>
+                `, 'error');
+            }
+        });
+
+        function showLoading(elementId) {
+            document.getElementById(elementId).style.display = 'block';
+        }
+
+        function hideLoading(elementId) {
+            document.getElementById(elementId).style.display = 'none';
+        }
+
+        function showResult(elementId, content, type) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = content;
+            element.style.display = 'block';
+        }
+
+        function hideResult(elementId) {
+            document.getElementById(elementId).style.display = 'none';
+        }
+    </script>
+</body>
+</html>

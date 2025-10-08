@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice Conversion with Play Button - Database Storage</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 25px;
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            background-color: #f8f9fa;
+            transition: all 0.3s ease;
+        }
+        .section:hover {
+            border-color: #667eea;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.1);
+        }
+        .section h2 {
+            color: #495057;
+            margin-top: 0;
+            font-size: 1.5em;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #495057;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        button {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+        button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        .audio-player {
+            margin-top: 20px;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 12px;
+            color: white;
+        }
+        .audio-player h4 {
+            margin-top: 0;
+            color: white;
+            font-size: 1.3em;
+        }
+        .audio-player audio {
+            width: 100%;
+            height: 50px;
+            border-radius: 8px;
+        }
+        .status {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 8px;
+            font-weight: 500;
+        }
+        .status.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 2px solid #c3e6cb;
+        }
+        .status.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 2px solid #f5c6cb;
+        }
+        .status.info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 2px solid #bee5eb;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .info-box {
+            background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);
+            border: 2px solid #bbdefb;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 25px;
+        }
+        .info-box h3 {
+            margin-top: 0;
+            color: #1976d2;
+            font-size: 1.4em;
+        }
+        .play-button {
+            background: linear-gradient(45deg, #28a745, #20c997);
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            margin: 5px;
+            transition: all 0.3s ease;
+        }
+        .play-button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+        }
+        .conversion-details {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+        .conversion-details h4 {
+            margin-top: 0;
+            color: #495057;
+        }
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            padding: 5px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+        .detail-label {
+            font-weight: 600;
+            color: #6c757d;
+        }
+        .detail-value {
+            color: #495057;
+        }
+        .url-box {
+            background: #e9ecef;
+            border: 1px solid #ced4da;
+            border-radius: 6px;
+            padding: 10px;
+            margin-top: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            word-break: break-all;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎤 Voice Conversion with Play Button</h1>
+        
+        <div class="info-box">
+            <h3>✨ Enhanced Voice Conversion with Database Storage</h3>
+            <p><strong>New Features:</strong></p>
+            <ul>
+                <li>🎵 <strong>Direct Playback:</strong> Audio plays directly in browser without downloads</li>
+                <li>💾 <strong>Database Storage:</strong> Audio stored in Supabase for instant access</li>
+                <li>⚡ <strong>Instant Play:</strong> Play button appears immediately after conversion</li>
+                <li>📊 <strong>Rich Metadata:</strong> Duration, file size, processing time included</li>
+                <li>🔗 <strong>Direct URLs:</strong> Shareable play URLs for easy integration</li>
+            </ul>
+        </div>
+
+        <!-- Voice Conversion Form -->
+        <div class="section">
+            <h2>🎤 Convert Voice</h2>
+            <form id="voiceConversionForm">
+                <div class="form-group">
+                    <label for="inputAudio">Input Audio File:</label>
+                    <input type="file" id="inputAudio" accept="audio/*" required>
+                    <small style="color: #6c757d;">Upload the audio file you want to convert</small>
+                </div>
+                <div class="form-group">
+                    <label for="referenceAudio">Reference Audio File:</label>
+                    <input type="file" id="referenceAudio" accept="audio/*" required>
+                    <small style="color: #6c757d;">Upload the reference audio with target voice characteristics</small>
+                </div>
+                <div class="form-group">
+                    <label for="device">Processing Device:</label>
+                    <select id="device">
+                        <option value="cpu">CPU (Recommended)</option>
+                        <option value="cuda">CUDA (GPU - if available)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="normalize" checked> Normalize Audio
+                    </label>
+                    <small style="color: #6c757d;">Normalize audio levels before processing</small>
+                </div>
+                <div class="form-group">
+                    <label for="targetSampleRate">Target Sample Rate:</label>
+                    <select id="targetSampleRate">
+                        <option value="">Default (22050 Hz)</option>
+                        <option value="16000">16000 Hz</option>
+                        <option value="22050">22050 Hz</option>
+                        <option value="44100">44100 Hz</option>
+                        <option value="48000">48000 Hz</option>
+                    </select>
+                </div>
+                <button type="submit">🚀 Convert Voice</button>
+            </form>
+            
+            <div class="loading" id="conversionLoading">
+                <div class="spinner"></div>
+                <p>🔄 Processing voice conversion...</p>
+            </div>
+            
+            <div id="conversionResult"></div>
+        </div>
+
+        <!-- Conversion Status Check -->
+        <div class="section">
+            <h2>📊 Check Conversion Status</h2>
+            <form id="statusForm">
+                <div class="form-group">
+                    <label for="conversionId">Conversion ID:</label>
+                    <input type="text" id="conversionId" placeholder="Enter conversion ID to check status" required>
+                </div>
+                <button type="submit">🔍 Check Status</button>
+            </form>
+            
+            <div class="loading" id="statusLoading">
+                <div class="spinner"></div>
+                <p>🔄 Checking conversion status...</p>
+            </div>
+            
+            <div id="statusResult"></div>
+        </div>
+
+        <!-- API Documentation -->
+        <div class="section">
+            <h2>📚 API Usage Examples</h2>
+            <div class="conversion-details">
+                <h4>cURL Example:</h4>
+                <div class="url-box">
+curl -X 'POST' 'http://localhost:8000/api/v1/convert-voice?device=cpu&normalize=true' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: multipart/form-data' \
+  -F 'input_audio=@input.wav;type=audio/wav' \
+  -F 'reference_audio=@reference.wav;type=audio/wav'
+                </div>
+                
+                <h4>JavaScript Example:</h4>
+                <div class="url-box">
+const formData = new FormData();
+formData.append('input_audio', inputFile);
+formData.append('reference_audio', referenceFile);
+
+const response = await fetch('/api/v1/convert-voice', {
+  method: 'POST',
+  body: formData
+});
+
+const result = await response.json();
+// Use result.play_url for direct audio playback
+                </div>
+                
+                <h4>HTML Audio Player:</h4>
+                <div class="url-box">
+&lt;audio controls&gt;
+  &lt;source src="/api/v1/play-voice/{conversion_id}" type="audio/wav"&gt;
+  Your browser does not support the audio element.
+&lt;/audio&gt;
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000/api/v1';
+        
+        // Voice Conversion Form
+        document.getElementById('voiceConversionForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData();
+            formData.append('input_audio', document.getElementById('inputAudio').files[0]);
+            formData.append('reference_audio', document.getElementById('referenceAudio').files[0]);
+            formData.append('device', document.getElementById('device').value);
+            formData.append('normalize', document.getElementById('normalize').checked);
+            
+            const targetSampleRate = document.getElementById('targetSampleRate').value;
+            if (targetSampleRate) {
+                formData.append('target_sample_rate', targetSampleRate);
+            }
+            
+            showLoading('conversionLoading');
+            hideResult('conversionResult');
+            
+            try {
+                const response = await fetch(`${API_BASE}/convert-voice`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                hideLoading('conversionLoading');
+                
+                if (result.status === 'completed') {
+                    showResult('conversionResult', `
+                        <div class="status success">
+                            <h3>✅ Voice Conversion Completed Successfully!</h3>
+                        </div>
+                        <div class="conversion-details">
+                            <h4>📋 Conversion Details</h4>
+                            <div class="detail-row">
+                                <span class="detail-label">Conversion ID:</span>
+                                <span class="detail-value">${result.conversion_id}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Output File:</span>
+                                <span class="detail-value">${result.output_file}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">File Size:</span>
+                                <span class="detail-value">${(result.file_size / 1024).toFixed(1)} KB</span>
+                            </div>
+                            ${result.output_duration ? `
+                            <div class="detail-row">
+                                <span class="detail-label">Duration:</span>
+                                <span class="detail-value">${result.output_duration.toFixed(2)} seconds</span>
+                            </div>
+                            ` : ''}
+                            ${result.processing_time ? `
+                            <div class="detail-row">
+                                <span class="detail-label">Processing Time:</span>
+                                <span class="detail-value">${result.processing_time.toFixed(2)} seconds</span>
+                            </div>
+                            ` : ''}
+                            <div class="detail-row">
+                                <span class="detail-label">Play URL:</span>
+                                <span class="detail-value">${API_BASE}${result.play_url}</span>
+                            </div>
+                        </div>
+                        <div class="audio-player">
+                            <h4>🎵 Play Converted Audio</h4>
+                            <audio controls id="convertedAudio">
+                                <source src="${API_BASE}${result.play_url}" type="audio/wav">
+                                Your browser does not support the audio element.
+                            </audio>
+                            <p><small>✨ This audio is streamed directly from the Supabase database!</small></p>
+                            <button class="play-button" onclick="document.getElementById('convertedAudio').play()">▶️ Play</button>
+                            <button class="play-button" onclick="document.getElementById('convertedAudio').pause()">⏸️ Pause</button>
+                            <button class="play-button" onclick="document.getElementById('convertedAudio').currentTime = 0">⏹️ Stop</button>
+                        </div>
+                    `, 'success');
+                    
+                    // Auto-fill the conversion ID for status checking
+                    document.getElementById('conversionId').value = result.conversion_id;
+                } else {
+                    showResult('conversionResult', `
+                        <div class="status error">
+                            <h3>❌ Voice Conversion Failed</h3>
+                            <p>${result.message}</p>
+                            ${result.error_message ? `<p><strong>Error Details:</strong> ${result.error_message}</p>` : ''}
+                        </div>
+                    `, 'error');
+                }
+            } catch (error) {
+                hideLoading('conversionLoading');
+                showResult('conversionResult', `
+                    <div class="status error">
+                        <h3>❌ Request Failed</h3>
+                        <p>${error.message}</p>
+                    </div>
+                `, 'error');
+            }
+        });
+
+        // Status Check Form
+        document.getElementById('statusForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const conversionId = document.getElementById('conversionId').value.trim();
+            
+            if (!conversionId) {
+                showResult('statusResult', `
+                    <div class="status error">
+                        <h3>❌ Error</h3>
+                        <p>Please enter a conversion ID</p>
+                    </div>
+                `, 'error');
+                return;
+            }
+            
+            showLoading('statusLoading');
+            hideResult('statusResult');
+            
+            try {
+                const response = await fetch(`${API_BASE}/conversion-status/${conversionId}`);
+                const result = await response.json();
+                hideLoading('statusLoading');
+                
+                if (response.ok) {
+                    const statusClass = result.status === 'completed' ? 'success' : 
+                                      result.status === 'failed' ? 'error' : 'info';
+                    
+                    showResult('statusResult', `
+                        <div class="status ${statusClass}">
+                            <h3>📊 Conversion Status: ${result.status.toUpperCase()}</h3>
+                        </div>
+                        <div class="conversion-details">
+                            <h4>📋 Status Details</h4>
+                            <div class="detail-row">
+                                <span class="detail-label">Conversion ID:</span>
+                                <span class="detail-value">${result.conversion_id}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Type:</span>
+                                <span class="detail-value">${result.transformation_type}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Created:</span>
+                                <span class="detail-value">${new Date(result.created_at).toLocaleString()}</span>
+                            </div>
+                            ${result.completed_at ? `
+                            <div class="detail-row">
+                                <span class="detail-label">Completed:</span>
+                                <span class="detail-value">${new Date(result.completed_at).toLocaleString()}</span>
+                            </div>
+                            ` : ''}
+                            ${result.processing_time_seconds ? `
+                            <div class="detail-row">
+                                <span class="detail-label">Processing Time:</span>
+                                <span class="detail-value">${result.processing_time_seconds.toFixed(2)}s</span>
+                            </div>
+                            ` : ''}
+                            ${result.output_file_size ? `
+                            <div class="detail-row">
+                                <span class="detail-label">File Size:</span>
+                                <span class="detail-value">${(result.output_file_size / 1024).toFixed(1)} KB</span>
+                            </div>
+                            ` : ''}
+                            ${result.output_duration ? `
+                            <div class="detail-row">
+                                <span class="detail-label">Duration:</span>
+                                <span class="detail-value">${result.output_duration.toFixed(2)}s</span>
+                            </div>
+                            ` : ''}
+                            ${result.error_message ? `
+                            <div class="detail-row">
+                                <span class="detail-label">Error:</span>
+                                <span class="detail-value" style="color: #dc3545;">${result.error_message}</span>
+                            </div>
+                            ` : ''}
+                        </div>
+                        ${result.status === 'completed' ? `
+                            <div class="audio-player">
+                                <h4>🎵 Play Audio</h4>
+                                <audio controls id="statusAudio">
+                                    <source src="${API_BASE}${result.play_url}" type="audio/wav">
+                                    Your browser does not support the audio element.
+                                </audio>
+                                <p><small>✨ This audio is streamed directly from the Supabase database!</small></p>
+                                <button class="play-button" onclick="document.getElementById('statusAudio').play()">▶️ Play</button>
+                                <button class="play-button" onclick="document.getElementById('statusAudio').pause()">⏸️ Pause</button>
+                                <button class="play-button" onclick="document.getElementById('statusAudio').currentTime = 0">⏹️ Stop</button>
+                            </div>
+                        ` : ''}
+                    `, statusClass);
+                } else {
+                    showResult('statusResult', `
+                        <div class="status error">
+                            <h3>❌ Error</h3>
+                            <p>${result.detail || 'Failed to get conversion status'}</p>
+                        </div>
+                    `, 'error');
+                }
+            } catch (error) {
+                hideLoading('statusLoading');
+                showResult('statusResult', `
+                    <div class="status error">
+                        <h3>❌ Error</h3>
+                        <p>${error.message}</p>
+                    </div>
+                `, 'error');
+            }
+        });
+
+        function showLoading(elementId) {
+            document.getElementById(elementId).style.display = 'block';
+        }
+
+        function hideLoading(elementId) {
+            document.getElementById(elementId).style.display = 'none';
+        }
+
+        function showResult(elementId, content, type) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = content;
+            element.style.display = 'block';
+        }
+
+        function hideResult(elementId) {
+            document.getElementById(elementId).style.display = 'none';
+        }
+    </script>
+</body>
+</html>

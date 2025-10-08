@@ -34,6 +34,9 @@ class ConversionResponse(BaseModel):
     output_file: Optional[str] = None
     file_size: Optional[int] = None
     download_url: Optional[str] = None
+    play_url: Optional[str] = None  # Direct play URL for browser audio element
+    output_duration: Optional[float] = None  # Audio duration in seconds
+    processing_time: Optional[float] = None  # Processing time in seconds
     created_at: datetime = Field(default_factory=datetime.now)
     completed_at: Optional[datetime] = None
     error_message: Optional[str] = None
