@@ -7,6 +7,7 @@ from datetime import datetime
 from typing import Dict, List, Optional, Any
 from app.core.supabase import get_supabase_client, get_supabase_admin_client
 from app.core.logging import get_logger
+from app.services.storage_service import storage_service
 
 logger = get_logger(__name__)
 
@@ -86,11 +87,20 @@ class DatabaseService:
         file_size: int,
         duration: float
     ) -> Dict[str, Any]:
-        """Save audio data to a voice conversion record"""
+        """Save audio data to Supabase Storage and update voice conversion record"""
         try:
+            # Upload audio file to Supabase Storage
+            storage_info = await storage_service.upload_audio_file(
+                audio_data=audio_data,
+                filename=filename,
+                folder="voice_conversions"
+            )
+            
+            # Update database record with storage information
             updates = {
-                "output_audio_data": audio_data,
-                "output_filename": filename,
+                "output_filename": storage_info["filename"],
+                "output_file_path": storage_info["file_path"],
+                "output_public_url": storage_info["public_url"],
                 "output_file_size": file_size,
                 "output_duration": duration,
                 "status": "completed"
@@ -99,7 +109,7 @@ class DatabaseService:
             result = self.client.table("voice_conversions").update(updates).eq("id", conversion_id).execute()
             
             if result.data:
-                logger.info(f"Saved audio data to voice conversion record: {conversion_id}")
+                logger.info(f"Saved audio to Supabase Storage and updated voice conversion record: {conversion_id}")
                 return result.data[0]
             else:
                 raise Exception("Voice conversion record not found")
@@ -109,12 +119,15 @@ class DatabaseService:
             raise
     
     async def get_audio_from_conversion(self, conversion_id: str) -> Optional[bytes]:
-        """Get audio data from a voice conversion record"""
+        """Get audio data from Supabase Storage for a voice conversion record"""
         try:
-            result = self.client.table("voice_conversions").select("output_audio_data").eq("id", conversion_id).execute()
+            # Get conversion record to find file path
+            result = self.client.table("voice_conversions").select("output_file_path").eq("id", conversion_id).execute()
             
-            if result.data and result.data[0].get("output_audio_data"):
-                return result.data[0]["output_audio_data"]
+            if result.data and result.data[0].get("output_file_path"):
+                file_path = result.data[0]["output_file_path"]
+                # Download audio from Supabase Storage
+                return await storage_service.get_audio_file(file_path)
             return None
             
         except Exception as e:
@@ -209,11 +222,20 @@ class DatabaseService:
         file_size: int,
         duration: float
     ) -> Dict[str, Any]:
-        """Save audio data to a text-to-speech conversion record"""
+        """Save audio data to Supabase Storage and update text-to-speech conversion record"""
         try:
+            # Upload audio file to Supabase Storage
+            storage_info = await storage_service.upload_audio_file(
+                audio_data=audio_data,
+                filename=filename,
+                folder="tts_conversions"
+            )
+            
+            # Update database record with storage information
             updates = {
-                "output_audio_data": audio_data,
-                "output_filename": filename,
+                "output_filename": storage_info["filename"],
+                "output_file_path": storage_info["file_path"],
+                "output_public_url": storage_info["public_url"],
                 "output_file_size": file_size,
                 "output_duration": duration,
                 "status": "completed"
@@ -222,7 +244,7 @@ class DatabaseService:
             result = self.client.table("text_to_speech_conversions").update(updates).eq("id", conversion_id).execute()
             
             if result.data:
-                logger.info(f"Saved audio data to TTS conversion record: {conversion_id}")
+                logger.info(f"Saved audio to Supabase Storage and updated TTS conversion record: {conversion_id}")
                 return result.data[0]
             else:
                 raise Exception("TTS conversion record not found")
@@ -232,12 +254,15 @@ class DatabaseService:
             raise
     
     async def get_audio_from_tts_conversion(self, conversion_id: str) -> Optional[bytes]:
-        """Get audio data from a text-to-speech conversion record"""
+        """Get audio data from Supabase Storage for a text-to-speech conversion record"""
         try:
-            result = self.client.table("text_to_speech_conversions").select("output_audio_data").eq("id", conversion_id).execute()
+            # Get conversion record to find file path
+            result = self.client.table("text_to_speech_conversions").select("output_file_path").eq("id", conversion_id).execute()
             
-            if result.data and result.data[0].get("output_audio_data"):
-                return result.data[0]["output_audio_data"]
+            if result.data and result.data[0].get("output_file_path"):
+                file_path = result.data[0]["output_file_path"]
+                # Download audio from Supabase Storage
+                return await storage_service.get_audio_file(file_path)
             return None
             
         except Exception as e:
@@ -361,11 +386,20 @@ class DatabaseService:
         file_size: int,
         duration: float
     ) -> Dict[str, Any]:
-        """Save audio data to a batch processing file record"""
+        """Save audio data to Supabase Storage and update batch processing file record"""
         try:
+            # Upload audio file to Supabase Storage
+            storage_info = await storage_service.upload_audio_file(
+                audio_data=audio_data,
+                filename=filename,
+                folder="batch_processing"
+            )
+            
+            # Update database record with storage information
             updates = {
-                "output_audio_data": audio_data,
-                "output_filename": filename,
+                "output_filename": storage_info["filename"],
+                "output_file_path": storage_info["file_path"],
+                "output_public_url": storage_info["public_url"],
                 "output_file_size": file_size,
                 "output_duration": duration,
                 "status": "completed"
@@ -374,7 +408,7 @@ class DatabaseService:
             result = self.client.table("batch_processing_files").update(updates).eq("id", file_id).execute()
             
             if result.data:
-                logger.info(f"Saved audio data to batch file record: {file_id}")
+                logger.info(f"Saved audio to Supabase Storage and updated batch file record: {file_id}")
                 return result.data[0]
             else:
                 raise Exception("Batch file record not found")
@@ -384,12 +418,15 @@ class DatabaseService:
             raise
     
     async def get_audio_from_batch_file(self, file_id: str) -> Optional[bytes]:
-        """Get audio data from a batch processing file record"""
+        """Get audio data from Supabase Storage for a batch processing file record"""
         try:
-            result = self.client.table("batch_processing_files").select("output_audio_data").eq("id", file_id).execute()
+            # Get file record to find file path
+            result = self.client.table("batch_processing_files").select("output_file_path").eq("id", file_id).execute()
             
-            if result.data and result.data[0].get("output_audio_data"):
-                return result.data[0]["output_audio_data"]
+            if result.data and result.data[0].get("output_file_path"):
+                file_path = result.data[0]["output_file_path"]
+                # Download audio from Supabase Storage
+                return await storage_service.get_audio_file(file_path)
             return None
             
         except Exception as e:

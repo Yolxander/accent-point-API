@@ -143,7 +143,7 @@ async def convert_voice(
         
         processing_time = time.time() - start_time
         
-        # Save audio data to database
+        # Save audio data to Supabase Storage
         if db_record:
             try:
                 await db_service.save_audio_to_conversion(
@@ -154,7 +154,7 @@ async def convert_voice(
                     output_duration
                 )
             except Exception as e:
-                print(f"Warning: Failed to save audio to database: {e}")
+                print(f"Warning: Failed to save audio to Supabase Storage: {e}")
                 # Fallback to file system storage
                 output_path = os.path.join(settings.OUTPUT_DIR, output_filename)
                 with open(output_path, 'wb') as f:
@@ -183,6 +183,16 @@ async def convert_voice(
         except Exception as e:
             print(f"Warning: Failed to update usage stats: {e}")
         
+        # Get public URL from database if available
+        public_url = None
+        if db_record:
+            try:
+                conversion = await db_service.get_voice_conversion(conversion_id)
+                if conversion and conversion.get("output_public_url"):
+                    public_url = conversion["output_public_url"]
+            except Exception as e:
+                print(f"Warning: Failed to get public URL: {e}")
+        
         return ConversionResponse(
             conversion_id=conversion_id,
             status="completed",
@@ -191,6 +201,7 @@ async def convert_voice(
             file_size=file_size,
             download_url=f"/api/v1/play-voice/{conversion_id}",
             play_url=f"/api/v1/play-voice/{conversion_id}",
+            public_url=public_url,  # Add public URL for direct access
             output_duration=output_duration,
             processing_time=processing_time,
             completed_at=datetime.now()

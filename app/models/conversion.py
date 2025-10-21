@@ -35,6 +35,7 @@ class ConversionResponse(BaseModel):
     file_size: Optional[int] = None
     download_url: Optional[str] = None
     play_url: Optional[str] = None  # Direct play URL for browser audio element
+    public_url: Optional[str] = None  # Public URL for direct access to Supabase Storage
     output_duration: Optional[float] = None  # Audio duration in seconds
     processing_time: Optional[float] = None  # Processing time in seconds
     created_at: datetime = Field(default_factory=datetime.now)
@@ -85,6 +86,7 @@ class TTSResponse(BaseModel):
     output_file: Optional[str] = None
     file_size: Optional[int] = None
     download_url: Optional[str] = None
+    public_url: Optional[str] = None  # Public URL for direct access to Supabase Storage
     created_at: datetime = Field(default_factory=datetime.now)
     completed_at: Optional[datetime] = None
     error_message: Optional[str] = None
@@ -137,6 +139,7 @@ class VoiceToVoiceResponse(BaseModel):
     output_file: Optional[str] = None
     file_size: Optional[int] = None
     download_url: Optional[str] = None
+    public_url: Optional[str] = None  # Public URL for direct access to Supabase Storage
     processing_time: Optional[float] = None
     created_at: datetime = Field(default_factory=datetime.now)
     completed_at: Optional[datetime] = None

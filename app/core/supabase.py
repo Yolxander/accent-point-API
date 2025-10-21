@@ -15,6 +15,8 @@ class SupabaseConfig:
         self.url: str = os.getenv("SUPABASE_URL", "http://127.0.0.1:54321")
         self.anon_key: str = os.getenv("SUPABASE_ANON_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0")
         self.service_role_key: str = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU")
+        self.s3_access_key: str = os.getenv("S3_ACCESS_KEY", "625729a08b95bf1b7ff351a663f3a23c")
+        self.s3_secret_key: str = os.getenv("S3_SECRET_KEY", "850181e4652dd023b7a98c58ae0d2d34bd487ee0cc3254aed6eda37307425907")
         self._client: Optional[Client] = None
         self._admin_client: Optional[Client] = None
     
