@@ -215,6 +215,10 @@ app.include_router(text_to_speech.router, prefix="/api/v1", tags=["text-to-speec
 app.include_router(batch_processing.router, prefix="/api/v1", tags=["batch-processing"])
 app.include_router(voice_to_voice.router, prefix="/api/v1", tags=["voice-to-voice"])
 
+# Import and include lab practices router
+from app.api.lab_practices import router as lab_practices_router
+app.include_router(lab_practices_router, tags=["lab-practices"])
+
 
 @app.get("/", 
          summary="API Root",

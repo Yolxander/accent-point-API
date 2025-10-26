@@ -77,8 +77,10 @@ class StorageService:
                 }
             )
             
-            if result.get("error"):
-                raise Exception(f"Upload failed: {result['error']}")
+            # Check for upload errors - result is a Response object, not a dict
+            if hasattr(result, 'status_code') and result.status_code != 200:
+                error_text = result.text if hasattr(result, 'text') else str(result)
+                raise Exception(f"Upload failed with status {result.status_code}: {error_text}")
             
             # Get public URL
             public_url = self.client.storage.from_(self.bucket_name).get_public_url(file_path)

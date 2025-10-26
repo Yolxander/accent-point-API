@@ -6,6 +6,7 @@ import os
 import tempfile
 import uuid
 import time
+import glob
 from datetime import datetime
 from typing import Optional
 from fastapi import APIRouter, File, UploadFile, HTTPException, BackgroundTasks, Depends
@@ -69,20 +70,27 @@ async def convert_voice(
     conversion_id = str(uuid.uuid4())
     start_time = time.time()
     
-    # Create database record for tracking
-    try:
-        db_record = await db_service.create_voice_conversion(
-            user_id=None,  # Will be set when user authentication is implemented
-            session_id=conversion_id,
-            transformation_type="voice_conversion",
-            source_audio_filename=input_audio.filename,
-            source_audio_size=input_audio.size,
-            reference_audio_filename=reference_audio.filename,
-            reference_audio_size=reference_audio.size
-        )
-    except Exception as e:
-        print(f"Warning: Failed to create database record: {e}")
-        db_record = None
+    # Create database record for tracking (optional)
+    db_record = None
+    if db_service.is_available():
+        try:
+            db_record = await db_service.create_voice_conversion(
+                user_id=None,  # Will be set when user authentication is implemented
+                session_id=conversion_id,
+                transformation_type="voice_conversion",
+                source_audio_filename=input_audio.filename,
+                source_audio_size=input_audio.size,
+                reference_audio_filename=reference_audio.filename,
+                reference_audio_size=reference_audio.size
+            )
+            # Use the actual database record ID for updates
+            if db_record:
+                conversion_id = db_record["id"]
+        except Exception as e:
+            print(f"Warning: Failed to create database record: {e}")
+            db_record = None
+    else:
+        print("Database not available - continuing without database tracking")
     
     try:
         # Read uploaded files
@@ -103,6 +111,18 @@ async def convert_voice(
             input_data = audio_processor.resample_audio(input_data, input_sr, target_sr)
         if reference_sr != target_sr:
             reference_data = audio_processor.resample_audio(reference_data, reference_sr, target_sr)
+        
+        # Optimize audio for OpenVoice processing
+        print("Optimizing audio for OpenVoice processing...")
+        input_data = audio_processor.optimize_for_openvoice(input_data, target_sr)
+        reference_data = audio_processor.optimize_for_openvoice(reference_data, target_sr)
+        
+        # Analyze voice content for better error messages
+        input_analysis = audio_processor.analyze_voice_content(input_data, target_sr)
+        reference_analysis = audio_processor.analyze_voice_content(reference_data, target_sr)
+        
+        print(f"Input audio analysis - Total: {input_analysis['total_duration']:.2f}s, Voice: {input_analysis['voice_duration']:.2f}s")
+        print(f"Reference audio analysis - Total: {reference_analysis['total_duration']:.2f}s, Voice: {reference_analysis['voice_duration']:.2f}s")
         
         # Create temporary files for OpenVoice processing
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False, dir=settings.TEMP_DIR) as temp_input:
@@ -159,15 +179,16 @@ async def convert_voice(
                 output_path = os.path.join(settings.OUTPUT_DIR, output_filename)
                 with open(output_path, 'wb') as f:
                     f.write(audio_data)
-                await db_service.update_voice_conversion(
-                    conversion_id,
-                    status="completed",
-                    output_filename=output_filename,
-                    output_file_size=file_size,
-                    output_duration=output_duration,
-                    processing_time_seconds=processing_time,
-                    completed_at=datetime.now().isoformat()
-                )
+                if db_service.is_available():
+                    await db_service.update_voice_conversion(
+                        conversion_id,
+                        status="completed",
+                        output_filename=output_filename,
+                        output_file_size=file_size,
+                        output_duration=output_duration,
+                        processing_time_seconds=processing_time,
+                        completed_at=datetime.now().isoformat()
+                    )
         
         # Clean up temporary output file
         os.unlink(temp_output_path)
@@ -222,7 +243,7 @@ async def convert_voice(
         processing_time = time.time() - start_time
         
         # Update database record with failure details
-        if db_record:
+        if db_record and db_service.is_available():
             try:
                 await db_service.update_voice_conversion(
                     conversion_id,
@@ -238,24 +259,53 @@ async def convert_voice(
 
 @router.get("/play-voice/{conversion_id}",
             summary="Play Voice Conversion Audio",
-            description="Stream the voice conversion audio file from database by conversion ID")
+            description="Stream the voice conversion audio file from Supabase Storage by conversion ID")
 async def play_voice_conversion_audio(conversion_id: str):
-    """Play voice conversion audio file from database"""
+    """Play voice conversion audio file from Supabase Storage"""
     
     try:
-        # Get audio data from database
-        audio_data = await db_service.get_audio_from_conversion(conversion_id)
+        # Get conversion record to find the storage filename
+        conversion = None
+        if db_service.is_available():
+            conversion = await db_service.get_voice_conversion(conversion_id)
+            if not conversion:
+                raise HTTPException(status_code=404, detail="Conversion not found")
         
-        if not audio_data:
-            raise HTTPException(status_code=404, detail="Audio not found")
-        
-        # Get conversion record for metadata
-        conversion = await db_service.get_voice_conversion(conversion_id)
+        # If no database or no conversion record, try to find file by ID
         if not conversion:
-            raise HTTPException(status_code=404, detail="Conversion not found")
+            # Fallback: look for file in outputs directory
+            filename = f"converted_{conversion_id}.wav"
+            output_path = os.path.join(settings.OUTPUT_DIR, filename)
+            if os.path.exists(output_path):
+                # Return file directly
+                return FileResponse(
+                    path=output_path,
+                    filename=filename,
+                    media_type="audio/wav"
+                )
+            else:
+                raise HTTPException(status_code=404, detail="Conversion not found")
         
-        filename = conversion.get("output_filename", f"voice_{conversion_id}.wav")
-        output_format = conversion.get("output_format", "wav")
+        filename = conversion.get("output_filename")
+        if not filename:
+            raise HTTPException(status_code=404, detail="Audio file not found")
+        
+        # Download from Supabase Storage
+        from app.services.storage_service import storage_service
+        
+        try:
+            # Get the file from storage bucket
+            file_path = f"voice_conversions/{filename}"
+            audio_data = await storage_service.get_audio_file(file_path)
+            
+            if not audio_data:
+                raise HTTPException(status_code=404, detail="Audio file not found in storage")
+            
+            # Return the audio data as a response
+            output_format = conversion.get("output_format", "wav")
+            
+        except Exception as storage_error:
+            raise HTTPException(status_code=404, detail=f"Failed to retrieve audio from storage: {str(storage_error)}")
         
         # Determine media type based on output format
         media_type_map = {

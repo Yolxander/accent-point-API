@@ -7,6 +7,7 @@ from datetime import datetime
 from typing import Dict, List, Optional, Any
 from app.core.supabase import get_supabase_client, get_supabase_admin_client
 from app.core.logging import get_logger
+from app.core.config import settings
 from app.services.storage_service import storage_service
 
 logger = get_logger(__name__)
@@ -18,6 +19,33 @@ class DatabaseService:
     def __init__(self):
         self.client = get_supabase_client()
         self.admin_client = get_supabase_admin_client()
+        self._db_available = None  # Cache database availability
+    
+    def is_available(self) -> bool:
+        """Check if database is available and enabled"""
+        if not settings.ENABLE_DATABASE:
+            return False
+        
+        # Cache the result to avoid repeated checks
+        if self._db_available is None:
+            try:
+                # Try a simple query to check database connectivity
+                result = self.admin_client.table("voice_conversions").select("id").limit(1).execute()
+                self._db_available = True
+                logger.info("Database is available")
+            except Exception as e:
+                self._db_available = False
+                logger.warning(f"Database is not available: {e}")
+        
+        return self._db_available
+    
+    def _check_database_required(self) -> None:
+        """Check if database is required and available"""
+        if not self.is_available():
+            if settings.DATABASE_REQUIRED:
+                raise Exception("Database is required but not available")
+            else:
+                logger.warning("Database operations skipped - database not available")
     
     async def create_voice_conversion(
         self,
@@ -31,8 +59,12 @@ class DatabaseService:
         reference_audio_size: Optional[int] = None,
         reference_audio_duration: Optional[float] = None,
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> Optional[Dict[str, Any]]:
         """Create a new voice conversion record"""
+        if not self.is_available():
+            self._check_database_required()
+            return None
+        
         try:
             conversion_data = {
                 "user_id": user_id,
@@ -48,7 +80,11 @@ class DatabaseService:
                 **kwargs
             }
             
-            result = self.client.table("voice_conversions").insert(conversion_data).execute()
+            # Use admin client to bypass RLS for unauthenticated users
+            if user_id is None:
+                result = self.admin_client.table("voice_conversions").insert(conversion_data).execute()
+            else:
+                result = self.client.table("voice_conversions").insert(conversion_data).execute()
             
             if result.data:
                 logger.info(f"Created voice conversion record: {result.data[0]['id']}")
@@ -58,7 +94,11 @@ class DatabaseService:
                 
         except Exception as e:
             logger.error(f"Error creating voice conversion: {e}")
-            raise
+            if settings.DATABASE_REQUIRED:
+                raise
+            else:
+                logger.warning("Continuing without database due to error")
+                return None
     
     async def update_voice_conversion(
         self,
@@ -67,7 +107,8 @@ class DatabaseService:
     ) -> Dict[str, Any]:
         """Update a voice conversion record"""
         try:
-            result = self.client.table("voice_conversions").update(updates).eq("id", conversion_id).execute()
+            # Use admin client to bypass RLS for consistency
+            result = self.admin_client.table("voice_conversions").update(updates).eq("id", conversion_id).execute()
             
             if result.data:
                 logger.info(f"Updated voice conversion record: {conversion_id}")
@@ -97,16 +138,23 @@ class DatabaseService:
             )
             
             # Update database record with storage information
+            # Use basic fields that exist in the current schema
+            import base64
+            # Ensure proper base64 encoding with padding
+            base64_data = base64.b64encode(audio_data).decode('utf-8')
+            # Verify the encoding is correct
+            if len(base64_data) % 4 != 0:
+                base64_data += '=' * (4 - len(base64_data) % 4)
+            
             updates = {
                 "output_filename": storage_info["filename"],
-                "output_file_path": storage_info["file_path"],
-                "output_public_url": storage_info["public_url"],
                 "output_file_size": file_size,
                 "output_duration": duration,
-                "status": "completed"
+                "status": "completed",
+                "output_audio_data": base64_data
             }
             
-            result = self.client.table("voice_conversions").update(updates).eq("id", conversion_id).execute()
+            result = self.admin_client.table("voice_conversions").update(updates).eq("id", conversion_id).execute()
             
             if result.data:
                 logger.info(f"Saved audio to Supabase Storage and updated voice conversion record: {conversion_id}")
@@ -121,13 +169,37 @@ class DatabaseService:
     async def get_audio_from_conversion(self, conversion_id: str) -> Optional[bytes]:
         """Get audio data from Supabase Storage for a voice conversion record"""
         try:
-            # Get conversion record to find file path
-            result = self.client.table("voice_conversions").select("output_file_path").eq("id", conversion_id).execute()
+            # Skip new storage fields since they don't exist in current schema
+            # Go directly to fallback method
             
-            if result.data and result.data[0].get("output_file_path"):
-                file_path = result.data[0]["output_file_path"]
-                # Download audio from Supabase Storage
-                return await storage_service.get_audio_file(file_path)
+            # Fallback: try to get audio data from the old output_audio_data field
+            try:
+                result = self.admin_client.table("voice_conversions").select("output_audio_data").eq("id", conversion_id).execute()
+                
+                if result.data and result.data[0].get("output_audio_data"):
+                    # Return the binary audio data directly
+                    audio_data = result.data[0]["output_audio_data"]
+                    # If it's a string, it might be base64 encoded
+                    if isinstance(audio_data, str):
+                        import base64
+                        try:
+                            # Clean and fix base64 data
+                            import re
+                            # Remove any non-base64 characters
+                            clean_data = re.sub(r'[^A-Za-z0-9+/=]', '', audio_data)
+                            # Add padding if needed
+                            missing_padding = len(clean_data) % 4
+                            if missing_padding:
+                                clean_data += '=' * (4 - missing_padding)
+                            audio_data = base64.b64decode(clean_data)
+                        except Exception as decode_error:
+                            logger.warning(f"Failed to decode base64 audio data: {decode_error}")
+                            return None
+                    return audio_data
+                    
+            except Exception as e:
+                logger.warning(f"Fallback to audio_data field failed: {e}")
+            
             return None
             
         except Exception as e:
@@ -136,8 +208,12 @@ class DatabaseService:
     
     async def get_voice_conversion(self, conversion_id: str) -> Optional[Dict[str, Any]]:
         """Get a voice conversion record by ID"""
+        if not self.is_available():
+            self._check_database_required()
+            return None
+        
         try:
-            result = self.client.table("voice_conversions").select("*").eq("id", conversion_id).execute()
+            result = self.admin_client.table("voice_conversions").select("*").eq("id", conversion_id).execute()
             
             if result.data:
                 return result.data[0]
@@ -145,7 +221,11 @@ class DatabaseService:
             
         except Exception as e:
             logger.error(f"Error getting voice conversion {conversion_id}: {e}")
-            return None
+            if settings.DATABASE_REQUIRED:
+                raise
+            else:
+                logger.warning("Continuing without database due to error")
+                return None
     
     async def get_user_conversions(
         self,
@@ -155,7 +235,7 @@ class DatabaseService:
     ) -> List[Dict[str, Any]]:
         """Get voice conversions for a user"""
         try:
-            result = self.client.table("voice_conversions").select("*").eq("user_id", user_id).order("created_at", desc=True).range(offset, offset + limit - 1).execute()
+            result = self.admin_client.table("voice_conversions").select("*").eq("user_id", user_id).order("created_at", desc=True).range(offset, offset + limit - 1).execute()
             return result.data or []
             
         except Exception as e:
@@ -465,6 +545,11 @@ class DatabaseService:
     ) -> None:
         """Update API usage statistics"""
         try:
+            # Skip stats tracking for unauthenticated users
+            if user_id is None:
+                logger.info("Skipping API usage stats for unauthenticated user")
+                return
+            
             today = datetime.now().date()
             
             # Try to update existing record
@@ -497,7 +582,7 @@ class DatabaseService:
     async def test_connection(self) -> bool:
         """Test database connection"""
         try:
-            result = self.client.table("voice_conversions").select("id").limit(1).execute()
+            result = self.admin_client.table("voice_conversions").select("id").limit(1).execute()
             return True
         except Exception as e:
             logger.error(f"Database connection test failed: {e}")

@@ -209,6 +209,159 @@ class AudioProcessor:
             logger.error(f"Failed to apply fade: {str(e)}")
             raise AudioProcessingError(f"Failed to apply fade: {str(e)}")
     
+    def analyze_voice_content(self, audio_data: np.ndarray, sample_rate: int) -> dict:
+        """
+        Analyze voice content in audio data
+        
+        Args:
+            audio_data: Input audio data
+            sample_rate: Sample rate
+            
+        Returns:
+            Dictionary with voice analysis results
+        """
+        try:
+            # Use librosa's voice activity detection
+            spectral_centroids = librosa.feature.spectral_centroid(y=audio_data, sr=sample_rate)[0]
+            spectral_rolloff = librosa.feature.spectral_rolloff(y=audio_data, sr=sample_rate)[0]
+            zero_crossing_rate = librosa.feature.zero_crossing_rate(audio_data)[0]
+            
+            # Calculate frame times
+            hop_length = 512
+            frame_times = librosa.frames_to_time(range(len(spectral_centroids)), sr=sample_rate, hop_length=hop_length)
+            
+            # Voice activity detection
+            voice_threshold = 0.1
+            voice_frames = []
+            
+            for i, (centroid, rolloff, zcr) in enumerate(zip(spectral_centroids, spectral_rolloff, zero_crossing_rate)):
+                if centroid > voice_threshold and zcr < 0.1:
+                    voice_frames.append(i)
+            
+            # Convert to time segments
+            voice_segments = []
+            if voice_frames:
+                start_frame = voice_frames[0]
+                current_frame = voice_frames[0]
+                
+                for i in range(1, len(voice_frames)):
+                    if voice_frames[i] - current_frame > 1:
+                        end_time = frame_times[current_frame]
+                        start_time = frame_times[start_frame]
+                        if end_time - start_time > 0.1:
+                            voice_segments.append((start_time, end_time))
+                        start_frame = voice_frames[i]
+                    current_frame = voice_frames[i]
+                
+                # Add final segment
+                end_time = frame_times[current_frame]
+                start_time = frame_times[start_frame]
+                if end_time - start_time > 0.1:
+                    voice_segments.append((start_time, end_time))
+            
+            # Calculate total voice duration
+            voice_duration = sum(end - start for start, end in voice_segments)
+            total_duration = len(audio_data) / sample_rate
+            
+            return {
+                "voice_segments": voice_segments,
+                "voice_duration": voice_duration,
+                "total_duration": total_duration,
+                "voice_ratio": voice_duration / total_duration if total_duration > 0 else 0
+            }
+            
+        except Exception as e:
+            logger.error(f"Failed to analyze voice content: {str(e)}")
+            raise AudioProcessingError(f"Failed to analyze voice content: {str(e)}")
+    
+    def pad_audio_to_minimum(self, audio_data: np.ndarray, sample_rate: int, 
+                            min_duration: float = 5.0) -> np.ndarray:
+        """
+        Pad audio with silence to meet minimum duration requirement
+        
+        Args:
+            audio_data: Input audio data
+            sample_rate: Sample rate
+            min_duration: Minimum duration in seconds
+            
+        Returns:
+            Padded audio data
+        """
+        try:
+            current_duration = len(audio_data) / sample_rate
+            
+            if current_duration >= min_duration:
+                return audio_data
+            
+            # Calculate padding needed
+            padding_duration = min_duration - current_duration
+            padding_samples = int(padding_duration * sample_rate)
+            
+            # Add silence at the end
+            padding = np.zeros(padding_samples, dtype=audio_data.dtype)
+            padded_audio = np.concatenate([audio_data, padding])
+            
+            logger.info(f"Padded audio from {current_duration:.2f}s to {len(padded_audio) / sample_rate:.2f}s")
+            return padded_audio
+            
+        except Exception as e:
+            logger.error(f"Failed to pad audio: {str(e)}")
+            raise AudioProcessingError(f"Failed to pad audio: {str(e)}")
+    
+    def optimize_for_openvoice(self, audio_data: np.ndarray, sample_rate: int) -> np.ndarray:
+        """
+        Optimize audio for OpenVoice processing
+        
+        Args:
+            audio_data: Input audio data
+            sample_rate: Sample rate
+            
+        Returns:
+            Optimized audio data
+        """
+        try:
+            original_duration = len(audio_data) / sample_rate
+            logger.info(f"Starting OpenVoice optimization: {original_duration:.2f}s")
+            
+            # Only trim if audio is longer than 8 seconds to preserve short recordings
+            if original_duration > 8.0:
+                # Use less aggressive trimming for better preservation
+                trimmed_audio = self.trim_silence(audio_data, sample_rate, top_db=30.0)
+                trimmed_duration = len(trimmed_audio) / sample_rate
+                logger.info(f"Trimmed silence: {original_duration:.2f}s -> {trimmed_duration:.2f}s")
+                
+                # Safety check: if trimming made it too short, use less aggressive trimming
+                if trimmed_duration < 4.0:
+                    logger.warning(f"Trimming too aggressive ({trimmed_duration:.2f}s), trying less aggressive approach")
+                    trimmed_audio = self.trim_silence(audio_data, sample_rate, top_db=40.0)
+                    trimmed_duration = len(trimmed_audio) / sample_rate
+                    logger.info(f"Less aggressive trimming: {original_duration:.2f}s -> {trimmed_duration:.2f}s")
+                
+                # If still too short, skip trimming entirely
+                if trimmed_duration < 3.0:
+                    logger.warning(f"Audio too short after trimming ({trimmed_duration:.2f}s), skipping trim")
+                    trimmed_audio = audio_data
+                    trimmed_duration = original_duration
+            else:
+                # For short recordings, skip trimming to preserve all content
+                logger.info(f"Short recording ({original_duration:.2f}s), skipping silence trimming")
+                trimmed_audio = audio_data
+                trimmed_duration = original_duration
+            
+            # Apply gentle fade in/out to prevent clicks
+            faded_audio = self.apply_fade(trimmed_audio, sample_rate, fade_in=0.05, fade_out=0.05)
+            
+            # Ensure minimum duration for OpenVoice with safety margin
+            optimized_audio = self.pad_audio_to_minimum(faded_audio, sample_rate, min_duration=6.0)
+            
+            final_duration = len(optimized_audio) / sample_rate
+            logger.info(f"OpenVoice optimization complete: {original_duration:.2f}s -> {final_duration:.2f}s")
+            return optimized_audio
+            
+        except Exception as e:
+            logger.error(f"Failed to optimize audio for OpenVoice: {str(e)}")
+            raise AudioProcessingError(f"Failed to optimize audio for OpenVoice: {str(e)}")
+
     async def pitch_shift(self, audio_data: np.ndarray, sample_rate: int, 
                          semitones: float) -> np.ndarray:
         """

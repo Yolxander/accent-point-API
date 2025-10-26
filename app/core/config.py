@@ -64,6 +64,10 @@ class Settings(BaseSettings):
     S3_SECRET_KEY: str = "850181e4652dd023b7a98c58ae0d2d34bd487ee0cc3254aed6eda37307425907"
     S3_BUCKET_NAME: str = "audio-files"
     
+    # Database Configuration
+    ENABLE_DATABASE: bool = True  # Set to False to disable database operations
+    DATABASE_REQUIRED: bool = False  # If True, fail when DB unavailable; if False, continue without DB
+    
     # Properties to convert comma-separated strings to lists
     @property
     def allowed_origins_list(self) -> List[str]:

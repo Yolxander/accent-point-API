@@ -37,6 +37,149 @@ class VoiceConverter:
             self._openvoice_available = False
             return False
     
+    async def _validate_audio_length(self, input_file: str, reference_file: str) -> None:
+        """Validate that audio files meet minimum length requirements"""
+        logger.info(f"Validating audio length for input: {input_file}, reference: {reference_file}")
+        
+        try:
+            import librosa
+            
+            # Load audio files to check duration
+            input_duration = librosa.get_duration(filename=input_file)
+            reference_duration = librosa.get_duration(filename=reference_file)
+            
+            # OpenVoice requires minimum 5 seconds of audio for reliable conversion
+            min_duration = 5.0
+            
+            logger.info(f"Audio durations - Input: {input_duration:.2f}s, Reference: {reference_duration:.2f}s")
+            
+            # Analyze voice content in input audio
+            input_audio_data, input_sr = librosa.load(input_file, sr=None)
+            voice_segments = await self._analyze_voice_content(input_audio_data, input_sr)
+            voice_duration = sum(end - start for start, end in voice_segments)
+            
+            logger.info(f"Voice analysis - Total duration: {input_duration:.2f}s, Voice content: {voice_duration:.2f}s")
+            logger.info(f"Voice segments: {voice_segments}")
+            logger.info(f"Voice content percentage: {(voice_duration/input_duration)*100:.1f}%")
+            
+            if input_duration < min_duration:
+                raise ConversionError(
+                    f"Input audio too short: {input_duration:.2f}s. "
+                    f"Minimum required: {min_duration}s. "
+                    f"Please record for at least {min_duration} seconds of continuous speech."
+                )
+            
+            if voice_duration < 1.0:  # Require at least 1.0 seconds of actual voice content
+                raise ConversionError(
+                    f"Insufficient voice content: {voice_duration:.2f}s detected out of {input_duration:.2f}s total. "
+                    f"Voice content percentage: {(voice_duration/input_duration)*100:.1f}%. "
+                    f"Please speak continuously for at least 5 seconds without long pauses. "
+                    f"Try speaking louder or closer to the microphone."
+                )
+            
+            if reference_duration < min_duration:
+                raise ConversionError(
+                    f"Reference audio too short: {reference_duration:.2f}s. "
+                    f"Minimum required: {min_duration}s. "
+                    f"Please use a reference audio that is at least {min_duration} seconds long."
+                )
+            
+            logger.info(f"Audio validation passed - Input: {input_duration:.2f}s (voice: {voice_duration:.2f}s), Reference: {reference_duration:.2f}s")
+            
+        except ImportError:
+            # If librosa is not available, skip validation but log warning
+            logger.warning("librosa not available for audio duration validation - trying wave module")
+            # Try alternative method using wave module
+            try:
+                import wave
+                with wave.open(input_file, 'r') as wav_file:
+                    input_duration = wav_file.getnframes() / wav_file.getframerate()
+                with wave.open(reference_file, 'r') as wav_file:
+                    reference_duration = wav_file.getnframes() / wav_file.getframerate()
+                
+                min_duration = 1.0
+                
+                logger.info(f"Audio durations (wave) - Input: {input_duration:.2f}s, Reference: {reference_duration:.2f}s")
+                
+                if input_duration < min_duration:
+                    raise ConversionError(
+                        f"Input audio too short: {input_duration:.2f}s. "
+                        f"Minimum required: {min_duration}s. "
+                        f"Please record for at least {min_duration} seconds."
+                    )
+                
+                if reference_duration < min_duration:
+                    raise ConversionError(
+                        f"Reference audio too short: {reference_duration:.2f}s. "
+                        f"Minimum required: {min_duration}s. "
+                        f"Please use a reference audio that is at least {min_duration} seconds long."
+                    )
+                
+                logger.info(f"Audio validation passed (wave) - Input: {input_duration:.2f}s, Reference: {reference_duration:.2f}s")
+                
+            except Exception as e:
+                logger.warning(f"Could not validate audio length: {e}")
+        except Exception as e:
+            logger.error(f"Error validating audio length: {str(e)}")
+            raise ConversionError(f"Audio validation failed: {str(e)}")
+    
+    async def _analyze_voice_content(self, audio_data, sample_rate: int) -> list:
+        """Analyze voice content in audio data using VAD-like approach"""
+        try:
+            import librosa
+            
+            # Use librosa's voice activity detection
+            # Get spectral features for voice detection
+            spectral_centroids = librosa.feature.spectral_centroid(y=audio_data, sr=sample_rate)[0]
+            spectral_rolloff = librosa.feature.spectral_rolloff(y=audio_data, sr=sample_rate)[0]
+            zero_crossing_rate = librosa.feature.zero_crossing_rate(audio_data)[0]
+            
+            # Calculate frame times
+            hop_length = 512
+            frame_times = librosa.frames_to_time(range(len(spectral_centroids)), sr=sample_rate, hop_length=hop_length)
+            
+            # Simple voice activity detection based on energy and spectral features
+            voice_threshold = 0.1  # Adjust based on testing
+            voice_frames = []
+            
+            for i, (centroid, rolloff, zcr) in enumerate(zip(spectral_centroids, spectral_rolloff, zero_crossing_rate)):
+                # Voice is detected if there's sufficient spectral energy and reasonable zero crossing rate
+                if centroid > voice_threshold and zcr < 0.1:  # Low ZCR indicates voice
+                    voice_frames.append(i)
+            
+            # Convert frame indices to time segments
+            voice_segments = []
+            if voice_frames:
+                # Group consecutive voice frames
+                start_frame = voice_frames[0]
+                current_frame = voice_frames[0]
+                
+                for i in range(1, len(voice_frames)):
+                    if voice_frames[i] - current_frame > 1:  # Gap in voice frames
+                        # End current segment
+                        end_time = frame_times[current_frame]
+                        start_time = frame_times[start_frame]
+                        if end_time - start_time > 0.1:  # Only include segments longer than 0.1s
+                            voice_segments.append((start_time, end_time))
+                        # Start new segment
+                        start_frame = voice_frames[i]
+                    current_frame = voice_frames[i]
+                
+                # Add final segment
+                end_time = frame_times[current_frame]
+                start_time = frame_times[start_frame]
+                if end_time - start_time > 0.1:
+                    voice_segments.append((start_time, end_time))
+            
+            logger.info(f"Voice analysis completed - Found {len(voice_segments)} voice segments")
+            return voice_segments
+            
+        except Exception as e:
+            logger.warning(f"Voice analysis failed: {e}")
+            # Fallback: assume entire audio is voice content
+            duration = len(audio_data) / sample_rate
+            return [(0.0, duration)]
+    
     async def convert_voice(self, input_file: str, reference_file: str, 
                           output_file: str, device: str = "cpu") -> None:
         """
@@ -59,6 +202,9 @@ class VoiceConverter:
             
             if not os.path.exists(reference_file):
                 raise ConversionError(f"Reference file not found: {reference_file}")
+            
+            # Validate audio length before conversion
+            await self._validate_audio_length(input_file, reference_file)
             
             # Ensure output directory exists
             os.makedirs(os.path.dirname(output_file), exist_ok=True)
