@@ -26,8 +26,10 @@ class ComparisonCreate(BaseModel):
     sentence: str
     before_audio_url: Optional[str] = None
     after_audio_url: Optional[str] = None
+    ideal_audio_url: Optional[str] = None
     before_audio_duration: Optional[float] = None
     after_audio_duration: Optional[float] = None
+    ideal_audio_duration: Optional[float] = None
     similarity_score: Optional[float] = None
 
 
@@ -68,8 +70,10 @@ async def create_comparison(comparison_data: ComparisonCreate):
             "sentence": comparison_data.sentence,
             "before_audio_url": comparison_data.before_audio_url,
             "after_audio_url": comparison_data.after_audio_url,
+            "ideal_audio_url": comparison_data.ideal_audio_url,
             "before_audio_duration": comparison_data.before_audio_duration,
             "after_audio_duration": comparison_data.after_audio_duration,
+            "ideal_audio_duration": comparison_data.ideal_audio_duration,
             "similarity_score": comparison_data.similarity_score
         }
         
@@ -86,6 +90,55 @@ async def create_comparison(comparison_data: ComparisonCreate):
             
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error creating comparison: {str(e)}")
+
+
+class ComparisonUpdate(BaseModel):
+    before_audio_url: Optional[str] = None
+    after_audio_url: Optional[str] = None
+    ideal_audio_url: Optional[str] = None
+    before_audio_duration: Optional[float] = None
+    after_audio_duration: Optional[float] = None
+    ideal_audio_duration: Optional[float] = None
+    similarity_score: Optional[float] = None
+
+
+@router.patch("/comparisons/{comparison_id}", summary="Update Comparison", description="Update an existing comparison record")
+async def update_comparison(comparison_id: str, comparison_data: ComparisonUpdate):
+    """Update an existing comparison record"""
+    try:
+        # Build update record with only provided fields
+        update_record = {}
+        if comparison_data.before_audio_url is not None:
+            update_record["before_audio_url"] = comparison_data.before_audio_url
+        if comparison_data.after_audio_url is not None:
+            update_record["after_audio_url"] = comparison_data.after_audio_url
+        if comparison_data.ideal_audio_url is not None:
+            update_record["ideal_audio_url"] = comparison_data.ideal_audio_url
+        if comparison_data.before_audio_duration is not None:
+            update_record["before_audio_duration"] = comparison_data.before_audio_duration
+        if comparison_data.after_audio_duration is not None:
+            update_record["after_audio_duration"] = comparison_data.after_audio_duration
+        if comparison_data.ideal_audio_duration is not None:
+            update_record["ideal_audio_duration"] = comparison_data.ideal_audio_duration
+        if comparison_data.similarity_score is not None:
+            update_record["similarity_score"] = comparison_data.similarity_score
+        
+        if not update_record:
+            raise HTTPException(status_code=400, detail="No fields to update")
+        
+        result = db_service.admin_client.table("comparisons").update(update_record).eq("id", comparison_id).execute()
+        
+        if result.data:
+            return {
+                "success": True,
+                "data": result.data[0],
+                "error": None
+            }
+        else:
+            raise HTTPException(status_code=404, detail="Comparison not found")
+            
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error updating comparison: {str(e)}")
 
 
 @router.get("/", summary="Get Lab Practices", description="Get all lab practice records")
@@ -144,3 +197,24 @@ async def get_lab_practice(practice_id: str):
             
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching lab practice: {str(e)}")
+
+
+@router.delete("/{practice_id}", summary="Delete Lab Practice", description="Delete a lab practice record and its comparisons")
+async def delete_lab_practice(practice_id: str):
+    """Delete a lab practice record and its associated comparisons"""
+    try:
+        # Delete comparisons first (due to foreign key constraint)
+        db_service.admin_client.table("comparisons").delete().eq("lab_practice_id", practice_id).execute()
+        
+        # Delete the practice record
+        result = db_service.admin_client.table("lab_practices").delete().eq("id", practice_id).execute()
+        
+        # Supabase delete returns empty array on success
+        return {
+            "success": True,
+            "data": None,
+            "error": None
+        }
+            
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error deleting lab practice: {str(e)}")
