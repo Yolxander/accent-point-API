@@ -48,8 +48,10 @@ class VoiceConverter:
             input_duration = librosa.get_duration(filename=input_file)
             reference_duration = librosa.get_duration(filename=reference_file)
             
-            # OpenVoice requires minimum 5 seconds of audio for reliable conversion
-            min_duration = 5.0
+            # OpenVoice requires minimum audio length for reliable conversion
+            # Reduced to 1.0 second for practice scenarios (short clips, words, phrases)
+            # Longer audio (5+ seconds) works better, but we support shorter clips
+            min_duration = 1.0
             
             logger.info(f"Audio durations - Input: {input_duration:.2f}s, Reference: {reference_duration:.2f}s")
             
@@ -69,19 +71,20 @@ class VoiceConverter:
                     f"Please record for at least {min_duration} seconds of continuous speech."
                 )
             
-            if voice_duration < 1.0:  # Require at least 1.0 seconds of actual voice content
+            if voice_duration < 0.5:  # Require at least 0.5 seconds of actual voice content (reduced for practice)
                 raise ConversionError(
                     f"Insufficient voice content: {voice_duration:.2f}s detected out of {input_duration:.2f}s total. "
                     f"Voice content percentage: {(voice_duration/input_duration)*100:.1f}%. "
-                    f"Please speak continuously for at least 5 seconds without long pauses. "
+                    f"Please speak clearly for at least 1 second. "
                     f"Try speaking louder or closer to the microphone."
                 )
             
-            if reference_duration < min_duration:
+            # Reference audio can be shorter (minimum 0.5s) as it's just for voice characteristics
+            if reference_duration < 0.5:
                 raise ConversionError(
                     f"Reference audio too short: {reference_duration:.2f}s. "
-                    f"Minimum required: {min_duration}s. "
-                    f"Please use a reference audio that is at least {min_duration} seconds long."
+                    f"Minimum required: 0.5s. "
+                    f"Please use a reference audio that is at least 0.5 seconds long."
                 )
             
             logger.info(f"Audio validation passed - Input: {input_duration:.2f}s (voice: {voice_duration:.2f}s), Reference: {reference_duration:.2f}s")

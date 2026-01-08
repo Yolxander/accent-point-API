@@ -207,6 +207,18 @@ async def transform_voice(
         if voice_enhancement:
             input_data = await audio_processor.voice_enhancement(input_data, target_sr)
         
+        # Pad short audio clips to meet minimum requirements (for practice scenarios)
+        # OpenVoice works better with longer audio, so pad if too short
+        input_duration = len(input_data) / target_sr
+        if input_duration < 1.0:
+            print(f"Input audio is short ({input_duration:.2f}s), padding to minimum 1.0s for OpenVoice...")
+            input_data = audio_processor.pad_audio_to_minimum(input_data, target_sr, min_duration=1.0)
+        
+        reference_duration = len(reference_data) / target_sr
+        if reference_duration < 0.5:
+            print(f"Reference audio is short ({reference_duration:.2f}s), padding to minimum 0.5s...")
+            reference_data = audio_processor.pad_audio_to_minimum(reference_data, target_sr, min_duration=0.5)
+        
         # Create temporary files for OpenVoice processing
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False, dir=settings.TEMP_DIR) as temp_input:
             audio_processor.save_audio(temp_input.name, input_data, target_sr)
