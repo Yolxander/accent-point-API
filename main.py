@@ -11,7 +11,7 @@ import uvicorn
 import os
 from contextlib import asynccontextmanager
 
-from app.api import voice_conversion, text_to_speech, batch_processing, health, voice_to_voice
+from app.api import voice_conversion, text_to_speech, batch_processing, health, voice_to_voice, native_reference
 from app.core.config import settings
 from app.core.logging import setup_logging
 from app.core.exceptions import setup_exception_handlers
@@ -214,6 +214,7 @@ app.include_router(voice_conversion.router, prefix="/api/v1", tags=["voice-conve
 app.include_router(text_to_speech.router, prefix="/api/v1", tags=["text-to-speech"])
 app.include_router(batch_processing.router, prefix="/api/v1", tags=["batch-processing"])
 app.include_router(voice_to_voice.router, prefix="/api/v1", tags=["voice-to-voice"])
+app.include_router(native_reference.router, prefix="/api/v1", tags=["native-reference"])
 
 # Import and include lab practices router
 from app.api.lab_practices import router as lab_practices_router
