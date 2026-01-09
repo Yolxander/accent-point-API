@@ -68,7 +68,24 @@ class NativeReferenceGenerator:
                 )
                 sample_rate = target_sr
             
-            logger.info(f"Native reference generated: {len(audio_data)/sample_rate:.2f}s")
+            # Check if audio is long enough for OpenVoice
+            # OpenVoice requires at least 5 seconds of voice content after VAD
+            # Since VAD typically reduces audio by 30-40%, we need at least 7-8 seconds of actual speech
+            current_duration = len(audio_data) / sample_rate
+            
+            # If the generated audio is too short, repeat it to create more voice content
+            # This is better than padding with silence since VAD will remove silence anyway
+            min_voice_duration = 7.0  # Minimum voice content needed (before VAD)
+            if current_duration < min_voice_duration:
+                # Repeat the audio to reach minimum length
+                repeats_needed = int(min_voice_duration / current_duration) + 1
+                repeated_audio = np.tile(audio_data, repeats_needed)
+                # Trim to exactly min_voice_duration
+                target_samples = int(min_voice_duration * sample_rate)
+                audio_data = repeated_audio[:target_samples]
+                logger.info(f"Repeated audio {repeats_needed}x times: {current_duration:.2f}s -> {len(audio_data)/sample_rate:.2f}s")
+            else:
+                logger.info(f"Native reference generated: {current_duration:.2f}s (sufficient length)")
             
             return audio_data, sample_rate
             

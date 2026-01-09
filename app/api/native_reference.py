@@ -2,6 +2,7 @@
 Native reference audio generation endpoints
 """
 
+import logging
 from fastapi import APIRouter, Form, HTTPException
 from fastapi.responses import FileResponse
 import tempfile
@@ -9,6 +10,8 @@ import os
 
 from app.services.native_reference_generator import NativeReferenceGenerator
 from app.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 generator = NativeReferenceGenerator()
@@ -34,11 +37,19 @@ async def generate_native_reference(
             language=language
         )
         
+        # Cleanup function for background task
+        def cleanup_file():
+            try:
+                if os.path.exists(output_file):
+                    os.unlink(output_file)
+            except Exception as e:
+                logger.warning(f"Failed to cleanup temp file {output_file}: {e}")
+        
         return FileResponse(
             output_file,
             media_type="audio/wav",
             filename=f"native_reference_{accent}.wav",
-            background=lambda: os.unlink(output_file)  # Cleanup after sending
+            background=cleanup_file  # Cleanup after sending
         )
         
     except Exception as e:
