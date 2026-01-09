@@ -18,8 +18,11 @@ class TTSService:
     
     def __init__(self):
         self.executor = ThreadPoolExecutor(max_workers=2)
+        self._piper_available = None
         self._gtts_available = None
         self._pyttsx3_available = None
+        # Default Piper voice model (high-quality English)
+        self._piper_voice = "en_US-lessac-medium"
     
     async def _check_gtts_availability(self) -> bool:
         """Check if Google TTS is available"""
@@ -34,6 +37,22 @@ class TTSService:
         except ImportError:
             logger.warning("Google TTS not available")
             self._gtts_available = False
+            return False
+    
+    async def _check_piper_availability(self) -> bool:
+        """Check if Piper TTS is available"""
+        if self._piper_available is not None:
+            return self._piper_available
+        
+        try:
+            from piper import PiperVoice
+            from piper.download import ensure_voice_exists, find_voice
+            self._piper_available = True
+            logger.info("Piper TTS is available")
+            return True
+        except ImportError:
+            logger.warning("Piper TTS not available")
+            self._piper_available = False
             return False
     
     async def _check_pyttsx3_availability(self) -> bool:
@@ -66,8 +85,12 @@ class TTSService:
             Tuple of (audio_data, sample_rate)
         """
         try:
-            # Try Google TTS first
-            if await self._check_gtts_availability():
+            # Try Piper TTS first (highest quality)
+            if await self._check_piper_availability():
+                return await self._generate_with_piper(text, speed, pitch, language)
+            
+            # Fallback to Google TTS
+            elif await self._check_gtts_availability():
                 return await self._generate_with_gtts(text, speed, pitch, language)
             
             # Fallback to pyttsx3
@@ -75,11 +98,68 @@ class TTSService:
                 return await self._generate_with_pyttsx3(text, speed, pitch)
             
             else:
-                raise ConversionError("No TTS engine available. Please install gtts or pyttsx3")
+                raise ConversionError("No TTS engine available. Please install piper-tts, gtts, or pyttsx3")
                 
         except Exception as e:
             logger.error(f"TTS generation failed: {str(e)}")
             raise ConversionError(f"TTS generation failed: {str(e)}")
+    
+    async def _generate_with_piper(self, text: str, speed: float, 
+                                  pitch: float, language: str) -> Tuple[np.ndarray, int]:
+        """Generate speech using Piper TTS"""
+        try:
+            # Run in thread pool to avoid blocking
+            result = await asyncio.get_event_loop().run_in_executor(
+                self.executor,
+                self._piper_generate_sync,
+                text, speed, pitch, language
+            )
+            return result
+            
+        except Exception as e:
+            logger.error(f"Piper TTS generation failed: {str(e)}")
+            raise ConversionError(f"Piper TTS generation failed: {str(e)}")
+    
+    def _piper_generate_sync(self, text: str, speed: float, 
+                            pitch: float, language: str) -> Tuple[np.ndarray, int]:
+        """Synchronous Piper TTS generation"""
+        from piper import PiperVoice
+        from piper.download import ensure_voice_exists, find_voice
+        import io
+        import soundfile as sf
+        import librosa
+        
+        try:
+            # Ensure voice model exists (downloads if needed)
+            voice_name = self._piper_voice
+            model_path, config_path = ensure_voice_exists(voice_name, [])
+            
+            # Load voice
+            with open(model_path, "rb") as model_file:
+                voice = PiperVoice.load(model_file, config_path=config_path)
+            
+            # Generate speech to WAV bytes
+            wav_io = io.BytesIO()
+            voice.synthesize(text, wav_io, speaker_id=None)
+            wav_io.seek(0)
+            
+            # Load audio with librosa (ensures WAV PCM format)
+            audio_data, sample_rate = librosa.load(wav_io, sr=None)
+            
+            # Apply speed and pitch modifications
+            if speed != 1.0:
+                audio_data = librosa.effects.time_stretch(audio_data, rate=speed)
+            
+            if pitch != 1.0:
+                # Pitch shifting using librosa
+                audio_data = librosa.effects.pitch_shift(audio_data, sr=sample_rate, n_steps=12 * np.log2(pitch))
+            
+            logger.info(f"Piper TTS generated: {len(audio_data)} samples at {sample_rate}Hz")
+            return audio_data, sample_rate
+            
+        except Exception as e:
+            logger.error(f"Piper TTS sync generation failed: {str(e)}")
+            raise
     
     async def _generate_with_gtts(self, text: str, speed: float, 
                                 pitch: float, language: str) -> Tuple[np.ndarray, int]:

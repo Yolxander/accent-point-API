@@ -102,15 +102,22 @@ async def convert_voice(
         reference_data, reference_sr = await audio_processor.load_audio_from_bytes(reference_content)
         
         # Normalize and resample if requested
-        if normalize:
-            input_data = audio_processor.normalize_audio(input_data)
-            reference_data = audio_processor.normalize_audio(reference_data)
-        
         target_sr = target_sample_rate or settings.TARGET_SAMPLE_RATE
+        
+        # Resample first, then normalize (loudness normalization needs correct sample rate)
         if input_sr != target_sr:
             input_data = audio_processor.resample_audio(input_data, input_sr, target_sr)
         if reference_sr != target_sr:
             reference_data = audio_processor.resample_audio(reference_data, reference_sr, target_sr)
+        
+        # Apply loudness normalization instead of peak normalization
+        if normalize:
+            input_data = audio_processor.normalize_loudness(input_data, target_sr)
+            reference_data = audio_processor.normalize_loudness(reference_data, target_sr)
+        
+        # Ensure consistent format before OpenVoice (mono, 16-bit PCM compatible, target SR)
+        input_data, target_sr = audio_processor.ensure_consistent_format(input_data, target_sr, target_sr)
+        reference_data, target_sr = audio_processor.ensure_consistent_format(reference_data, target_sr, target_sr)
         
         # Optimize audio for OpenVoice processing
         print("Optimizing audio for OpenVoice processing...")
@@ -125,9 +132,13 @@ async def convert_voice(
             input_data = audio_processor.pad_audio_to_minimum(input_data, target_sr, min_duration=1.0)
         
         reference_duration = len(reference_data) / target_sr
-        if reference_duration < 0.5:
-            print(f"Reference audio is short ({reference_duration:.2f}s), padding to minimum 0.5s...")
-            reference_data = audio_processor.pad_audio_to_minimum(reference_data, target_sr, min_duration=0.5)
+        # Ensure reference audio is long enough for good voice conversion
+        # OpenVoice works better with longer reference audio (at least 2-3 seconds)
+        min_reference_duration = 2.0
+        if reference_duration < min_reference_duration:
+            print(f"Reference audio is short ({reference_duration:.2f}s), padding to minimum {min_reference_duration}s for better voice conversion...")
+            reference_data = audio_processor.pad_audio_to_minimum(reference_data, target_sr, min_duration=min_reference_duration)
+            reference_duration = len(reference_data) / target_sr
         
         # Analyze voice content for better error messages
         input_analysis = audio_processor.analyze_voice_content(input_data, target_sr)
@@ -135,6 +146,12 @@ async def convert_voice(
         
         print(f"Input audio analysis - Total: {input_analysis['total_duration']:.2f}s, Voice: {input_analysis['voice_duration']:.2f}s")
         print(f"Reference audio analysis - Total: {reference_analysis['total_duration']:.2f}s, Voice: {reference_analysis['voice_duration']:.2f}s")
+        
+        # Log conversion parameters for debugging
+        print(f"Voice conversion parameters:")
+        print(f"  Input (native reference): {input_analysis['total_duration']:.2f}s total, {input_analysis['voice_duration']:.2f}s voice")
+        print(f"  Reference (user voice): {reference_analysis['total_duration']:.2f}s total, {reference_analysis['voice_duration']:.2f}s voice")
+        print(f"  This will convert native accent audio to user's voice timbre")
         
         # Create temporary files for OpenVoice processing
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False, dir=settings.TEMP_DIR) as temp_input:

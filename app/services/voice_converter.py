@@ -152,6 +152,9 @@ class VoiceConverter:
             
             # Convert frame indices to time segments
             voice_segments = []
+            total_duration = len(audio_data) / sample_rate
+            padding_seconds = 0.2  # 200ms padding to preserve natural transitions
+            
             if voice_frames:
                 # Group consecutive voice frames
                 start_frame = voice_frames[0]
@@ -163,18 +166,23 @@ class VoiceConverter:
                         end_time = frame_times[current_frame]
                         start_time = frame_times[start_frame]
                         if end_time - start_time > 0.1:  # Only include segments longer than 0.1s
-                            voice_segments.append((start_time, end_time))
+                            # Add padding to preserve natural transitions
+                            padded_start = max(0.0, start_time - padding_seconds)
+                            padded_end = min(total_duration, end_time + padding_seconds)
+                            voice_segments.append((padded_start, padded_end))
                         # Start new segment
                         start_frame = voice_frames[i]
                     current_frame = voice_frames[i]
                 
-                # Add final segment
+                # Add final segment with padding
                 end_time = frame_times[current_frame]
                 start_time = frame_times[start_frame]
                 if end_time - start_time > 0.1:
-                    voice_segments.append((start_time, end_time))
+                    padded_start = max(0.0, start_time - padding_seconds)
+                    padded_end = min(total_duration, end_time + padding_seconds)
+                    voice_segments.append((padded_start, padded_end))
             
-            logger.info(f"Voice analysis completed - Found {len(voice_segments)} voice segments")
+            logger.info(f"Voice analysis completed - Found {len(voice_segments)} voice segments (with {padding_seconds*1000:.0f}ms padding)")
             return voice_segments
             
         except Exception as e:
@@ -252,10 +260,20 @@ class VoiceConverter:
             tune_one = openvoice_main.tune_one
             
             logger.info(f"Running OpenVoice conversion with:")
-            logger.info(f"  Input: {input_file}")
-            logger.info(f"  Reference: {reference_file}")
+            logger.info(f"  Input (native reference): {input_file}")
+            logger.info(f"  Reference (user voice sample): {reference_file}")
             logger.info(f"  Output: {output_file}")
             logger.info(f"  Device: {device}")
+            logger.info(f"  Note: This converts the native accent audio to match user's voice timbre")
+            
+            # Verify files exist and have content
+            if not os.path.exists(input_file) or os.path.getsize(input_file) == 0:
+                raise ConversionError(f"Input file is missing or empty: {input_file}")
+            if not os.path.exists(reference_file) or os.path.getsize(reference_file) == 0:
+                raise ConversionError(f"Reference file is missing or empty: {reference_file}")
+            
+            logger.info(f"  Input file size: {os.path.getsize(input_file)} bytes")
+            logger.info(f"  Reference file size: {os.path.getsize(reference_file)} bytes")
             
             # Run the conversion
             tune_one(

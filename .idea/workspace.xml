@@ -6,8 +6,11 @@
   <component name="ChangeListManager">
     <list default="true" id="e00ce784-2018-4166-a18c-085c1af91a4e" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/services/native_reference_generator.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/services/native_reference_generator.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/text_to_speech.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/text_to_speech.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/voice_conversion.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/voice_conversion.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/services/audio_processor.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/services/audio_processor.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/services/tts_service.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/services/tts_service.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/services/voice_converter.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/services/voice_converter.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/requirements.txt" beforeDir="false" afterPath="$PROJECT_DIR$/requirements.txt" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -99,7 +102,7 @@
       <updated>1758476795505</updated>
       <workItem from="1759882499710" duration="65000" />
       <workItem from="1767887078033" duration="5793000" />
-      <workItem from="1767970486456" duration="2204000" />
+      <workItem from="1767970486456" duration="4869000" />
     </task>
     <servers />
   </component>

@@ -63,18 +63,25 @@ class AudioProcessor:
             logger.error(f"Failed to load audio from file {file_path}: {str(e)}")
             raise AudioProcessingError(f"Failed to load audio from file: {str(e)}")
     
-    def save_audio(self, file_path: str, audio_data: np.ndarray, sample_rate: int) -> None:
+    def save_audio(self, file_path: str, audio_data: np.ndarray, sample_rate: int, 
+                   subtype: str = 'PCM_16') -> None:
         """
-        Save audio to file
+        Save audio to file as 16-bit PCM WAV
         
         Args:
             file_path: Output file path
             audio_data: Audio data array
             sample_rate: Sample rate
+            subtype: Audio subtype (default: 'PCM_16' for 16-bit PCM)
         """
         try:
-            sf.write(file_path, audio_data, sample_rate)
-            logger.info(f"Saved audio to {file_path}")
+            # Ensure mono if stereo
+            if audio_data.ndim > 1:
+                audio_data = np.mean(audio_data, axis=1)
+            
+            # Save as 16-bit PCM WAV
+            sf.write(file_path, audio_data, sample_rate, subtype=subtype)
+            logger.info(f"Saved audio to {file_path} ({subtype}, {sample_rate}Hz)")
             
         except Exception as e:
             logger.error(f"Failed to save audio to {file_path}: {str(e)}")
@@ -82,7 +89,7 @@ class AudioProcessor:
     
     def normalize_audio(self, audio_data: np.ndarray) -> np.ndarray:
         """
-        Normalize audio data
+        Normalize audio data (peak normalization - legacy method)
         
         Args:
             audio_data: Input audio data
@@ -98,6 +105,62 @@ class AudioProcessor:
         except Exception as e:
             logger.error(f"Failed to normalize audio: {str(e)}")
             raise AudioProcessingError(f"Failed to normalize audio: {str(e)}")
+    
+    def normalize_loudness(self, audio_data: np.ndarray, sample_rate: int, 
+                          target_lufs: float = -16.0, peak_limit_db: float = -1.0) -> np.ndarray:
+        """
+        Normalize audio using loudness normalization (LUFS) with peak limiting
+        
+        This provides better quality than peak normalization by targeting
+        perceived loudness rather than peak amplitude.
+        
+        Args:
+            audio_data: Input audio data
+            sample_rate: Sample rate of the audio
+            target_lufs: Target loudness in LUFS (default: -16.0 for speech)
+            peak_limit_db: Peak limit in dB (default: -1.0)
+            
+        Returns:
+            Loudness-normalized audio data
+        """
+        try:
+            import pyloudnorm as pyln
+            
+            # Ensure audio is in the right format (mono, float32)
+            if audio_data.ndim > 1:
+                # Convert stereo to mono
+                audio_data = np.mean(audio_data, axis=1)
+            
+            # Measure loudness
+            meter = pyln.Meter(sample_rate)
+            loudness = meter.integrated_loudness(audio_data)
+            
+            # Calculate gain adjustment
+            if not np.isnan(loudness):
+                gain_db = target_lufs - loudness
+                gain_linear = 10 ** (gain_db / 20.0)
+                normalized = audio_data * gain_linear
+            else:
+                # If loudness measurement fails, use peak normalization as fallback
+                logger.warning("Loudness measurement failed, using peak normalization")
+                normalized = librosa.util.normalize(audio_data)
+            
+            # Apply peak limiting to prevent clipping
+            peak_limit_linear = 10 ** (peak_limit_db / 20.0)
+            peak = np.max(np.abs(normalized))
+            if peak > peak_limit_linear:
+                normalized = normalized * (peak_limit_linear / peak)
+            
+            logger.debug(f"Loudness normalized: {loudness:.2f} LUFS -> {target_lufs:.2f} LUFS (peak limit: {peak_limit_db:.1f} dB)")
+            return normalized
+            
+        except ImportError:
+            logger.warning("pyloudnorm not available, falling back to peak normalization")
+            return librosa.util.normalize(audio_data)
+        except Exception as e:
+            logger.error(f"Failed to normalize loudness: {str(e)}")
+            # Fallback to peak normalization
+            return librosa.util.normalize(audio_data)
     
     def resample_audio(self, audio_data: np.ndarray, orig_sr: int, target_sr: int) -> np.ndarray:
         """
@@ -122,6 +185,44 @@ class AudioProcessor:
         except Exception as e:
             logger.error(f"Failed to resample audio: {str(e)}")
             raise AudioProcessingError(f"Failed to resample audio: {str(e)}")
+    
+    def ensure_consistent_format(self, audio_data: np.ndarray, sample_rate: int,
+                                target_sr: int = 22050) -> Tuple[np.ndarray, int]:
+        """
+        Ensure audio is in consistent format: mono, 16-bit PCM compatible, target sample rate
+        
+        This ensures all audio is in the same format before OpenVoice processing,
+        reducing format-related artifacts.
+        
+        Args:
+            audio_data: Input audio data
+            sample_rate: Current sample rate
+            target_sr: Target sample rate (default: 22050)
+            
+        Returns:
+            Tuple of (formatted_audio_data, target_sample_rate)
+        """
+        try:
+            # Convert to mono if stereo
+            if audio_data.ndim > 1:
+                audio_data = np.mean(audio_data, axis=1)
+                logger.debug("Converted stereo to mono")
+            
+            # Resample to target sample rate if needed
+            if sample_rate != target_sr:
+                audio_data = self.resample_audio(audio_data, sample_rate, target_sr)
+                sample_rate = target_sr
+            
+            # Ensure float32 format (librosa/soundfile will handle 16-bit conversion on save)
+            if audio_data.dtype != np.float32:
+                audio_data = audio_data.astype(np.float32)
+            
+            logger.debug(f"Audio format ensured: mono, {target_sr}Hz, float32")
+            return audio_data, target_sr
+            
+        except Exception as e:
+            logger.error(f"Failed to ensure consistent format: {str(e)}")
+            raise AudioProcessingError(f"Failed to ensure consistent format: {str(e)}")
     
     def get_audio_info(self, audio_data: np.ndarray, sample_rate: int) -> dict:
         """
