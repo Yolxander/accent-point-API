@@ -31,6 +31,7 @@ class ComparisonCreate(BaseModel):
     after_audio_duration: Optional[float] = None
     ideal_audio_duration: Optional[float] = None
     similarity_score: Optional[float] = None
+    word_pack_item_id: Optional[str] = None
 
 
 @router.post("/", summary="Create Lab Practice", description="Create a new lab practice record")
@@ -74,7 +75,8 @@ async def create_comparison(comparison_data: ComparisonCreate):
             "before_audio_duration": comparison_data.before_audio_duration,
             "after_audio_duration": comparison_data.after_audio_duration,
             "ideal_audio_duration": comparison_data.ideal_audio_duration,
-            "similarity_score": comparison_data.similarity_score
+            "similarity_score": comparison_data.similarity_score,
+            "word_pack_item_id": comparison_data.word_pack_item_id
         }
         
         result = db_service.admin_client.table("comparisons").insert(comparison_record).execute()
@@ -100,6 +102,7 @@ class ComparisonUpdate(BaseModel):
     after_audio_duration: Optional[float] = None
     ideal_audio_duration: Optional[float] = None
     similarity_score: Optional[float] = None
+    word_pack_item_id: Optional[str] = None
 
 
 @router.patch("/comparisons/{comparison_id}", summary="Update Comparison", description="Update an existing comparison record")
@@ -122,6 +125,8 @@ async def update_comparison(comparison_id: str, comparison_data: ComparisonUpdat
             update_record["ideal_audio_duration"] = comparison_data.ideal_audio_duration
         if comparison_data.similarity_score is not None:
             update_record["similarity_score"] = comparison_data.similarity_score
+        if comparison_data.word_pack_item_id is not None:
+            update_record["word_pack_item_id"] = comparison_data.word_pack_item_id
         
         if not update_record:
             raise HTTPException(status_code=400, detail="No fields to update")
